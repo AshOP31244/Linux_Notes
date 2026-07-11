@@ -197,6 +197,24 @@ function answerMcq(btn, isCorrect, num){
 
 /* ---------------- Expand all / theme / print ---------------- */
 let expanded = false;
+function currentMermaidTheme(){
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  return isLight ? 'default' : 'dark';
+}
+function applyMermaidTheme(){
+  if(!window.mermaid) return;
+  window.mermaid.initialize({
+    startOnLoad:false,
+    theme: currentMermaidTheme(),
+    securityLevel:'loose',
+    themeVariables:{ fontFamily:'JetBrains Mono, monospace' }
+  });
+}
+function setBtnLabel(btn, text){
+  const label = btn.querySelector('.label');
+  if(label) label.textContent = text; else btn.textContent = text;
+}
+
 function initTopbarControls(){
   const expandBtn = document.getElementById('expandAllBtn');
   expandBtn.addEventListener('click', ()=>{
@@ -205,24 +223,17 @@ function initTopbarControls(){
       c.classList.toggle('open', expanded);
       if(expanded) renderMermaidIn(c);
     });
-    expandBtn.textContent = expanded ? 'collapse --all' : 'expand --all';
+    setBtnLabel(expandBtn, expanded ? 'collapse --all' : 'expand --all');
   });
 
   const themeBtn = document.getElementById('themeToggle');
   themeBtn.addEventListener('click', ()=>{
     const html = document.documentElement;
-    const isDark = html.getAttribute('data-theme') === 'dark';
-    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    themeBtn.textContent = isDark ? 'theme --dark' : 'theme --light';
-    if(window.mermaid){
-      window.mermaid.initialize({
-        startOnLoad:false,
-        theme: isDark ? 'default' : 'dark',
-        securityLevel:'loose',
-        themeVariables:{ fontFamily:'JetBrains Mono, monospace' }
-      });
-      reRenderOpenMermaidDiagrams();
-    }
+    const isLight = html.getAttribute('data-theme') === 'light';
+    html.setAttribute('data-theme', isLight ? 'dark' : 'light');
+    setBtnLabel(themeBtn, isLight ? 'theme --light' : 'theme --dark');
+    applyMermaidTheme();
+    reRenderOpenMermaidDiagrams();
   });
 }
 
@@ -302,6 +313,7 @@ function boot(){
   initTopbarControls();
   initMobileDrawer();
   applyGlossaryTooltips();
+  applyMermaidTheme();
 
   // Open the first card by default and render its diagram.
   const first = document.getElementById('q01');
@@ -311,8 +323,16 @@ function boot(){
   }
 }
 
+function startBoot(){
+  if(window.mermaid){
+    boot();
+  }else{
+    window.addEventListener('mermaid-ready', boot, { once:true });
+  }
+}
+
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', boot);
+  document.addEventListener('DOMContentLoaded', startBoot);
 }else{
-  boot();
+  startBoot();
 }
