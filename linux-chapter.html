@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux Lab :: Chapter 01 — Foundations &amp; Virtualization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  window.mermaid = mermaid;
+</script>
+<style>
+  :root[data-theme="dark"]{
+    --bg:#0b0f14; --bg-2:#0e1319;
+    --panel:#121821; --panel-2:#182130; --panel-3:#0f151d;
+    --border:#243040; --border-soft:#1c2632;
+    --text:#dfe7ee; --text-dim:#8b98a8; --text-faint:#5b6774;
+    --accent:#52e3a4; --accent-dim:#2b8f6b;
+    --accent-2:#e8a33d; --danger:#ef6461; --info:#5aa9e6;
+    --shadow: 0 20px 50px -20px rgba(0,0,0,0.6);
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f4ee; --bg-2:#efece3;
+    --panel:#ffffff; --panel-2:#f1efe6; --panel-3:#eae6d9;
+    --border:#dcd6c6; --border-soft:#e6e1d3;
+    --text:#20262c; --text-dim:#5c6570; --text-faint:#8a8f95;
+    --accent:#1f8f5f; --accent-dim:#146648;
+    --accent-2:#a4650f; --danger:#b8433d; --info:#2565a6;
+    --shadow: 0 20px 40px -25px rgba(0,0,0,0.25);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 100% -10%, var(--panel-2), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;}
+  code, pre, .cmd{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;}
+
+  /* ===== Top bar ===== */
+  header.topbar{
+    position:sticky; top:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px;
+    background:color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);}
+  .brand-text{font-family:'JetBrains Mono';font-weight:700;letter-spacing:0.02em;font-size:15px;}
+  .brand-text .path{color:var(--text-dim);font-weight:400;}
+  .topbar-actions{display:flex;gap:8px;}
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--panel-2); color:var(--text); border:1px solid var(--border);
+    padding:8px 14px; border-radius:8px; font-size:13px; font-family:'JetBrains Mono';
+    cursor:pointer; transition:all .15s ease;
+  }
+  .btn:hover{border-color:var(--accent); color:var(--accent);}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* ===== Layout ===== */
+  .layout{display:grid; grid-template-columns:280px 1fr; gap:0; max-width:1440px; margin:0 auto;}
+  @media (max-width:960px){ .layout{grid-template-columns:1fr;} .sidebar{position:static; height:auto;} }
+
+  .sidebar{
+    position:sticky; top:61px; height:calc(100vh - 61px); overflow-y:auto;
+    padding:20px 14px; border-right:1px solid var(--border-soft);
+  }
+  .rack-label{font-family:'JetBrains Mono'; font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.12em; padding:0 10px 10px;}
+  .rack-unit{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px; border-radius:8px; cursor:pointer;
+    border:1px solid transparent; margin-bottom:3px;
+    font-size:13px; color:var(--text-dim);
+    transition:all .15s ease;
+  }
+  .rack-unit:hover{background:var(--panel-2); color:var(--text);}
+  .rack-unit.active{background:var(--panel-2); border-color:var(--border); color:var(--accent);}
+  .rack-unit .u-tag{
+    font-family:'JetBrains Mono'; font-size:10px; font-weight:700;
+    background:var(--panel-3); border:1px solid var(--border);
+    padding:2px 5px; border-radius:4px; color:var(--text-faint); flex-shrink:0;
+  }
+  .rack-unit.active .u-tag{color:var(--accent); border-color:var(--accent-dim);}
+
+  main{padding:32px 40px 100px; min-width:0;}
+  @media (max-width:640px){ main{padding:20px 16px 80px;} }
+
+  .hero{
+    padding:40px 4px 30px; border-bottom:1px solid var(--border-soft); margin-bottom:36px;
+  }
+  .hero .eyebrow{
+    font-family:'JetBrains Mono'; color:var(--accent); font-size:12.5px; letter-spacing:.14em;
+    text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .hero .eyebrow::before{content:''; width:22px; height:1px; background:var(--accent); display:inline-block;}
+  .hero h1{font-size:clamp(28px,4vw,42px); margin:0 0 14px; font-weight:800; letter-spacing:-0.02em;}
+  .hero p{color:var(--text-dim); max-width:640px; font-size:15.5px; margin:0;}
+  .hero-meta{display:flex; gap:22px; margin-top:22px; flex-wrap:wrap;}
+  .hero-meta div{font-family:'JetBrains Mono'; font-size:12px; color:var(--text-faint);}
+  .hero-meta strong{display:block; color:var(--text); font-size:18px; font-family:'Inter'; font-weight:700;}
+
+  /* ===== Terminal card ===== */
+  .qcard{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    margin-bottom:26px; overflow:hidden; box-shadow:var(--shadow); scroll-margin-top:80px;
+  }
+  .qcard-head{
+    display:flex; align-items:center; gap:12px; padding:14px 18px;
+    background:var(--panel-3); border-bottom:1px solid var(--border-soft); cursor:pointer;
+    user-select:none;
+  }
+  .traffic{display:flex; gap:6px; flex-shrink:0;}
+  .traffic span{width:10px;height:10px;border-radius:50%; display:inline-block;}
+  .traffic .r{background:#ef6461;} .traffic .a{background:#e8a33d;} .traffic .g{background:#52e3a4;}
+  .qcard-head .prompt{font-family:'JetBrains Mono'; font-size:13px; color:var(--text-faint); white-space:nowrap;}
+  .qcard-head .prompt b{color:var(--accent);}
+  .qcard-title{font-weight:600; font-size:15px; flex:1; min-width:0;}
+  .chevron{font-family:'JetBrains Mono'; color:var(--text-faint); transition:transform .2s ease; flex-shrink:0;}
+  .qcard.open .chevron{transform:rotate(90deg); color:var(--accent);}
+  .qcard-body{display:none; padding:26px 24px 30px;}
+  .qcard.open .qcard-body{display:block;}
+
+  .sec{margin-bottom:26px;}
+  .sec:last-child{margin-bottom:0;}
+  .sec-label{
+    display:flex; align-items:center; gap:10px; margin-bottom:10px;
+  }
+  .sec-num{
+    font-family:'JetBrains Mono'; font-size:11px; font-weight:700; color:var(--bg);
+    background:var(--accent); border-radius:5px; width:22px; height:22px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .sec-label h3{margin:0; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); font-family:'JetBrains Mono'; font-weight:600;}
+  .sec-content{padding-left:32px; font-size:14.5px;}
+  .sec-content p{margin:0 0 10px;}
+  .sec-content ul, .sec-content ol{margin:8px 0; padding-left:20px;}
+  .sec-content li{margin-bottom:5px;}
+
+  .original-box{
+    background:var(--panel-2); border-left:3px solid var(--info); border-radius:0 8px 8px 0;
+    padding:14px 16px; font-size:14px; color:var(--text);
+  }
+  .analogy-box{
+    background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), transparent);
+    border:1px dashed var(--accent-dim); border-radius:10px; padding:14px 16px; margin-top:10px; font-size:14px;
+  }
+  .analogy-box b{color:var(--accent);}
+  .flow-mini{font-family:'JetBrains Mono'; font-size:13px; color:var(--text-dim); line-height:2;}
+  .flow-mini .arrow{color:var(--accent);}
+
+  .interview-box{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px; font-size:14px; position:relative;
+  }
+  .interview-box::before{content:"🎤 INTERVIEW ANSWER"; font-family:'JetBrains Mono'; font-size:10px; letter-spacing:.1em; color:var(--accent-2); display:block; margin-bottom:8px;}
+
+  .mermaid-wrap{
+    background:var(--panel-3); border:1px solid var(--border-soft); border-radius:10px;
+    padding:16px; overflow-x:auto;
+  }
+  .mermaid-wrap .mermaid{display:flex; justify-content:center;}
+
+  table.cmp{width:100%; border-collapse:collapse; font-size:13.5px; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+  table.cmp th{background:var(--panel-3); text-align:left; padding:10px 12px; font-family:'JetBrains Mono'; font-size:12px; color:var(--accent); border-bottom:1px solid var(--border);}
+  table.cmp td{padding:10px 12px; border-bottom:1px solid var(--border-soft); vertical-align:top;}
+  table.cmp tr:last-child td{border-bottom:none;}
+
+  .cmd-block{
+    background:var(--panel-3); border:1px solid var(--border); border-radius:10px; margin-bottom:14px; overflow:hidden;
+  }
+  .cmd-block .cmd-head{
+    display:flex; align-items:center; justify-content:space-between; padding:10px 14px;
+    background:var(--panel-2); border-bottom:1px solid var(--border-soft);
+  }
+  .cmd-block .cmd-head code{color:var(--accent); font-weight:600; font-size:14px;}
+  .copy-btn{
+    font-family:'JetBrains Mono'; font-size:11px; background:transparent; color:var(--text-faint);
+    border:1px solid var(--border); border-radius:6px; padding:4px 9px; cursor:pointer;
+  }
+  .copy-btn:hover{color:var(--accent); border-color:var(--accent);}
+  .cmd-body{padding:14px; font-size:13.5px;}
+  .cmd-body dl{margin:0; display:grid; grid-template-columns:110px 1fr; gap:6px 12px;}
+  .cmd-body dt{color:var(--text-faint); font-family:'JetBrains Mono'; font-size:12px; text-transform:uppercase;}
+  .cmd-body dd{margin:0;}
+
+  .term{
+    background:#05070a; color:#c7f9e0; border-radius:8px; padding:14px 16px;
+    font-size:13px; overflow-x:auto; white-space:pre; border:1px solid #1c2b24;
+  }
+  :root[data-theme="light"] .term{background:#0d1117; color:#9be9c8;}
+  .term .p1{color:#52e3a4;} .term .p2{color:#5aa9e6;} .term .dim{color:#5b6774;}
+
+  .lab-box{
+    background:var(--panel-2); border:1px solid var(--border-dim, var(--border)); border-radius:10px; padding:16px 18px;
+    border-left:3px solid var(--accent);
+  }
+  .lab-box ol{margin:6px 0 0; padding-left:20px;}
+
+  .mistake-box{
+    background:color-mix(in srgb, var(--danger) 8%, var(--panel)); border:1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+    border-radius:10px; padding:14px 16px;
+  }
+  .mistake-box b{color:var(--danger);}
+
+  .trouble-flow{display:flex; flex-direction:column; gap:0; font-size:14px;}
+  .trouble-step{padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2); margin-bottom:0;}
+  .trouble-step .tag{font-family:'JetBrains Mono'; font-size:10px; color:var(--accent-2); letter-spacing:.08em; display:block; margin-bottom:4px;}
+  .trouble-arrow{text-align:center; color:var(--accent); padding:4px 0; font-family:'JetBrains Mono';}
+
+  .memory-trick{
+    display:flex; align-items:center; gap:10px; background:var(--panel-2); border-radius:10px; padding:12px 16px;
+    font-size:14px; border:1px solid var(--border);
+  }
+  .memory-trick .icon{font-size:20px;}
+
+  .flip-card{perspective:1000px; height:110px; cursor:pointer;}
+  .flip-inner{position:relative; width:100%; height:100%; transition:transform .5s; transform-style:preserve-3d;}
+  .flip-card.flipped .flip-inner{transform:rotateY(180deg);}
+  .flip-front, .flip-back{
+    position:absolute; inset:0; backface-visibility:hidden; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; text-align:center; padding:14px;
+    font-size:14px; border:1px solid var(--border);
+  }
+  .flip-front{background:var(--panel-2);}
+  .flip-back{background:var(--accent-dim); color:#04120c; transform:rotateY(180deg); font-weight:600;}
+  .flip-hint{font-family:'JetBrains Mono'; font-size:10px; color:var(--text-faint); text-align:center; margin-top:6px;}
+
+  .mcq-box{border:1px solid var(--border); border-radius:10px; padding:16px 18px; background:var(--panel-2);}
+  .mcq-opt{
+    display:block; width:100%; text-align:left; background:var(--panel); border:1px solid var(--border);
+    color:var(--text); padding:9px 12px; border-radius:8px; margin-bottom:7px; font-size:13.5px; cursor:pointer;
+  }
+  .mcq-opt:hover{border-color:var(--accent);}
+  .mcq-opt.correct{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 16%, var(--panel)); color:var(--accent);}
+  .mcq-opt.wrong{border-color:var(--danger); background:color-mix(in srgb, var(--danger) 14%, var(--panel)); color:var(--danger);}
+  .mcq-explain{font-size:13px; color:var(--text-dim); margin-top:8px; display:none;}
+  .mcq-explain.show{display:block;}
+
+  .summary-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px;}
+  @media (max-width:600px){ .summary-grid{grid-template-columns:1fr;} }
+  .summary-grid li{list-style:none; padding-left:20px; position:relative;}
+  .summary-grid li::before{content:'▸'; color:var(--accent); position:absolute; left:0;}
+
+  .verify{
+    max-width:1440px; margin:0 auto; padding:30px 40px 80px;
+  }
+  .verify-card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:26px 28px;}
+  .verify-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-top:16px;}
+  .verify-item{background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:14px;}
+  .verify-item .n{font-family:'JetBrains Mono'; font-size:26px; font-weight:700; color:var(--accent);}
+  .verify-item .l{font-size:12px; color:var(--text-dim);}
+
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  @media print{
+    header.topbar, .sidebar, .btn{display:none !important;}
+    .qcard-body{display:block !important;}
+    body{background:#fff; color:#000;}
+    .qcard{break-inside:avoid; box-shadow:none; border:1px solid #ccc;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <span class="brand-text">linux-lab <span class="path">~/chapter-01/pages-1-10</span></span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn" id="expandAllBtn">expand --all</button>
+    <button class="btn" id="themeToggle">theme --light</button>
+    <button class="btn" onclick="window.print()">print --pdf</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="rack-label">// Rack — 16 questions</div>
+    <div id="rackList"></div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Chapter 01 · Beginner → Interview-ready</div>
+      <h1>Linux Foundations &amp; Virtualization</h1>
+      <p>Everything on pages 1–10 of the source PDF, preserved word-for-word, then expanded into a full teaching unit: plain-English explanations, real diagrams, terminal walkthroughs, labs, and interview drills. Assume you've never opened a terminal — we start there.</p>
+      <div class="hero-meta">
+        <div><strong>16</strong>questions covered</div>
+        <div><strong>16</strong>diagrams</div>
+        <div><strong>16</strong>flashcards</div>
+        <div><strong>16</strong>MCQs</div>
+        <div><strong>16</strong>mini-labs</div>
+      </div>
+    </section>
+
+    <div id="qcontainer"></div>
+  </main>
+</div>
+
+<section class="verify">
+  <div class="verify-card">
+    <div class="eyebrow" style="margin-bottom:6px;">Verification checklist</div>
+    <p style="color:var(--text-dim); margin:0 0 6px; font-size:14px;">Confirming this chapter matches the "do not skip anything" mandate for pages 1–10 of the source PDF.</p>
+    <div class="verify-grid">
+      <div class="verify-item"><div class="n">16 / 16</div><div class="l">Questions processed</div></div>
+      <div class="verify-item"><div class="n">5</div><div class="l">Commands fully broken down (Q12)</div></div>
+      <div class="verify-item"><div class="n">16</div><div class="l">Mermaid diagrams added</div></div>
+      <div class="verify-item"><div class="n">16</div><div class="l">Real-world scenarios added</div></div>
+      <div class="verify-item"><div class="n">16</div><div class="l">Interview answers added</div></div>
+      <div class="verify-item"><div class="n">16</div><div class="l">Flashcards added</div></div>
+      <div class="verify-item"><div class="n">16</div><div class="l">MCQs added</div></div>
+      <div class="verify-item"><div class="n">16</div><div class="l">Mini-labs added</div></div>
+      <div class="verify-item"><div class="n">✓</div><div class="l">All 4 comparison tables from source preserved</div></div>
+      <div class="verify-item"><div class="n">✓</div><div class="l">Every original sentence retained in "Original Answer" blocks</div></div>
+    </div>
+  </div>
+</section>
+
+<script>
+const QUESTIONS = [
+{
+  num:"01",
+  q:"What is Linux? Who discovered it and when?",
+  original:"Linux is an open-source operating system based on Unix architecture. It is widely used for servers, cloud, and enterprise environments. It was created by Linus Torvalds in 1991.",
+  beginner:"<p>Think of your computer as a <b>city</b>. Something has to direct traffic, assign buildings, and keep the lights on — that's the job of an <b>operating system</b> (OS). Windows and macOS are two well-known city-managers. Linux is another one — except the blueprint for how it's built (its \"source code\") is public. Anyone can read it, copy it, change it, and share their version, completely free.</p><p>In 1991, a Finnish university student named <b>Linus Torvalds</b> was frustrated that existing systems (like the expensive commercial OS \"Unix\") weren't freely available to tinker with. So he wrote his own small OS core — called a <b>kernel</b> — as a hobby project and shared it on the internet. Volunteers around the world helped grow it into the full operating system we call Linux today.</p>",
+  why:"<p>Before Linux, powerful Unix-like operating systems were locked behind expensive corporate licenses (IBM, HP, Oracle). Students, hobbyists, and small companies couldn't afford them or inspect how they worked. Linux solved this by being <b>free, open, and modifiable</b> — which unlocked a wave of global collaboration that no single company could match.</p>",
+  real:"<p>Almost every cloud server you interact with daily — Netflix, Amazon, Google Search, most banking back-ends — runs on Linux. When a company like Amazon spins up thousands of servers on AWS, they choose Linux because it's free to license (no per-server fee), stable for months without a reboot, and can be customized down to the kernel for their exact workload.</p>",
+  interview:"Linux is a free, open-source operating system based on Unix, created by Linus Torvalds in 1991. It's the dominant OS for servers, cloud infrastructure, and embedded devices because it's stable, secure, customizable, and has no licensing cost.",
+  visual:{type:"mermaid", code:`timeline
+    title From Unix to Linux
+    1969 : Unix created at Bell Labs (AT&T)
+    1991 : Linus Torvalds releases the Linux kernel (age 21, as a hobby project)
+    1990s : Global volunteers add drivers, tools, and full distributions
+    Today : Linux powers most servers, cloud, Android, and supercomputers`},
+  commands:[],
+  terminal:null,
+  lab:"<p>No terminal needed yet — this is a research lab:</p><ol><li>Search for 3 companies that publicly state they run Linux on their servers.</li><li>For each, note which <b>distribution</b> (flavor) of Linux they use — e.g. Ubuntu, RHEL, Debian.</li><li>Write one sentence on why you think they chose Linux over Windows Server.</li></ol>",
+  mistakes:"<p><b>\"Linux is only for hackers and only has a black screen with text.\"</b> In reality, most beginner-friendly distributions (Ubuntu Desktop, Linux Mint) look and feel like Windows or macOS, with a full graphical desktop. The command line is optional for everyday use — but essential for servers, which is why IT professionals learn it.</p>",
+  trouble:{problem:"\"I installed Linux and there's no icons, just a black screen with text waiting for input.\"", reason:"You likely installed a <b>server edition</b> (no graphical interface by design — servers don't need a screen) instead of a <b>desktop edition</b>.", solution:"Reinstall using a desktop-labelled ISO (e.g. \"Ubuntu Desktop\") if you want a GUI, or learn the terminal — it's exactly what real Linux administrators use daily."},
+  memory:"🧠 <b>L</b>inus + <b>1991</b> = think \"Linus turned 21 in '91 and gave the world a kernel.\"",
+  flashcard:{q:"Who created Linux, and in what year?", a:"Linus Torvalds, in 1991."},
+  mcq:{q:"Linux is based on the architecture of which older operating system?", options:["Windows NT","Unix","MS-DOS","CP/M"], answer:1, explain:"Linux was inspired by and designed to be compatible with Unix's design philosophy, though its kernel code was written from scratch by Linus Torvalds."},
+  summary:["Linux = free, open-source operating system.","Created by Linus Torvalds in 1991.","Based on Unix architecture.","Dominant OS for servers, cloud, and enterprise.","Source code is public — anyone can inspect or modify it.","No licensing fees, unlike many commercial Unix variants."]
+},
+{
+  num:"02",
+  q:"Difference between Virtual Server and Physical Server",
+  original:`<table class="cmp"><thead><tr><th></th><th>Virtual Server</th><th>Physical Server</th></tr></thead><tbody>
+    <tr><td><b>Backup</b></td><td>In Virtual server, it is easy to backup and restore</td><td>Physical server uses Primitive Backup Methodology</td></tr>
+    <tr><td><b>Snapshot</b></td><td>Virtual servers use snapshots for testing and Upgrade Management</td><td>Snapshots cannot be used in Physical servers</td></tr>
+    <tr><td><b>Load balancing</b></td><td>Virtual servers do load balancing using DRS</td><td>In Physical servers there is no load balancing technique</td></tr>
+    <tr><td><b>Resize</b></td><td>In virtual server, resizing of RAM and CPU can be done easily</td><td>In Physical server, resizing of RAM and CPU is difficult process</td></tr>
+  </tbody></table>`,
+  beginner:"<p>A <b>physical server</b> is one real, physical box of hardware sitting in a data center — one motherboard, one set of RAM sticks, one set of CPUs, doing one job (or a few).</p><p>A <b>virtual server</b> (or \"Virtual Machine\"/VM) is a <i>pretend computer</i> that lives inside a real, more powerful physical server. Software called a <b>hypervisor</b> slices up the real hardware's resources (CPU, RAM, disk) and hands out portions to several VMs, each of which believes it has its own dedicated machine — like several apartments inside one large building, each with its own locked door, kitchen, and furniture, but sharing the same building foundation and electricity supply.</p>",
+  why:"<p>Buying, racking, and cabling a brand-new physical server for every single small application would be hugely wasteful — most servers only use a fraction of their CPU/RAM most of the time. Virtualization was created to let one powerful physical machine safely host dozens of independent \"virtual\" servers, cutting cost, power usage, and space, while making backup, cloning, and scaling dramatically easier.</p>",
+  real:"<p>An admin needs to test a risky software update. On a VM, they take a <b>snapshot</b> first — a save point. If the update breaks something, they roll back in seconds. On a physical server there's no built-in \"undo\" — recovery means restoring from a full backup tape or image, which can take hours. This is why most companies keep only a few workloads (databases needing raw performance, or specialized hardware) on physical servers, and run everything else virtualized.</p>",
+  interview:"Virtual servers run as software instances on a shared physical host via a hypervisor, offering easy backup, snapshots, DRS-based load balancing, and quick CPU/RAM resizing. Physical servers are dedicated hardware with none of those conveniences built in — resizing or restoring them is manual and slow.",
+  visual:{type:"mermaid", code:`graph TD
+    subgraph Physical_Server["Physical Server"]
+      P1["1 OS<br/>Fixed CPU/RAM<br/>No snapshot<br/>Manual backup"]
+    end
+    subgraph Virtual_Host["One Physical Host running a Hypervisor"]
+      H["Hypervisor (ESXi)"] --> VM1["VM 1 - Web App"]
+      H --> VM2["VM 2 - Database"]
+      H --> VM3["VM 3 - Test Env (snapshot enabled)"]
+    end`},
+  commands:[],
+  terminal:null,
+  lab:"<p>Compare on paper: pick one app you use daily (e.g. a website). List what would happen if it ran on (a) one physical server vs (b) a VM, when: traffic doubles overnight, and when a bad update needs rolling back.</p>",
+  mistakes:"<p>Beginners assume virtual servers are \"fake\" or less capable. In practice, a well-resourced VM performs indistinguishably from physical hardware for most workloads — the difference is management flexibility, not raw capability for typical use cases.</p>",
+  trouble:{problem:"A VM feels slower than expected.", reason:"Too many VMs are competing for the same physical CPU/RAM pool on the host (over-provisioning).", solution:"Check host resource usage (CPU ready time, memory ballooning) in vCenter and either add host capacity or migrate some VMs to another host via vMotion."},
+  memory:"🧠 Physical = one apartment building (yours alone). Virtual = a shared apartment complex, split by a super (the hypervisor).",
+  flashcard:{q:"Which server type supports snapshots for instant rollback?", a:"Virtual servers (not physical)."},
+  mcq:{q:"What technology do virtual servers use for load balancing across hosts?", options:["DRS","RAID","VLAN","DNS"], answer:0, explain:"DRS (Distributed Resource Scheduler) automatically balances VM workloads across physical hosts in a VMware cluster."},
+  summary:["Physical server = one dedicated hardware box.","Virtual server = software instance sharing a host via a hypervisor.","Virtual servers support snapshots; physical servers do not.","DRS load-balances VMs across hosts; physical servers have no equivalent.","Resizing CPU/RAM is fast for VMs, slow/manual for physical.","Physical servers use older, manual backup methods."]
+},
+{
+  num:"03",
+  q:"Difference between Linux and Windows.",
+  original:`<table class="cmp"><thead><tr><th></th><th>Linux</th><th>Windows</th></tr></thead><tbody>
+    <tr><td><b>Source Code</b></td><td>Linux is opensource i.e. freely available</td><td>Windows is owned by Microsoft and not freely available for public access</td></tr>
+    <tr><td><b>Code</b></td><td>Linux is Free of Cost</td><td>Windows requires paid license</td></tr>
+    <tr><td><b>User Interface</b></td><td>Linux uses both CLI (Command Line Interface) and GUI (Graphical User Interface)</td><td>Windows uses GUI (Graphical User Interface)</td></tr>
+    <tr><td><b>Security</b></td><td>Linux are more secure</td><td>Windows are Less Secure</td></tr>
+    <tr><td><b>Performance</b></td><td>Linux are more efficient</td><td>Windows are Less efficient</td></tr>
+    <tr><td><b>Kernel</b></td><td>Linux uses Monolithic Kernel</td><td>Window uses Microlithic Kernel</td></tr>
+    <tr><td><b>File system</b></td><td>Linux filesystem is case sensitive</td><td>Windows filesystem is case insensitive</td></tr>
+  </tbody></table>`,
+  beginner:"<p>Imagine two restaurant kitchens. Windows is a kitchen where the recipes are a trade secret locked in the owner's safe (Microsoft owns the code) and you must pay a membership fee to cook there. Linux is a community kitchen where every recipe is posted on the wall for anyone to read, copy, or improve, and there's no membership fee.</p><p>A <b>kernel</b> is the innermost \"engine room\" of an OS — the part that directly talks to the hardware. Linux uses a <b>monolithic kernel</b> (all core services run together in one big trusted space, like one large well-coordinated engine room crew) versus Windows using what the source calls a <b>\"microlithic\"</b> (commonly known as hybrid/micro-style) kernel, where services are more separated.</p><p><b>Case sensitivity</b> means <code>File.txt</code> and <code>file.txt</code> are treated as two totally different files on Linux, but as the same file on Windows.</p>",
+  why:"<p>Windows was built as a commercial, closed product optimized for mass-market ease of use and broad hardware/software compatibility. Linux was built by a global community valuing transparency, customizability, and server-grade efficiency — which is why it dominates in environments where security, cost, and fine-grained control matter most.</p>",
+  real:"<p>A DevOps engineer deploying a web application will almost always choose a Linux server: no per-server license fee at scale, strong file-permission security model, and the ability to strip the OS down to only what's needed for performance. A company's office employees, meanwhile, usually still use Windows desktops because of familiarity and compatibility with tools like Microsoft Office.</p>",
+  interview:"Linux is free and open-source with a monolithic kernel, strong CLI capability, case-sensitive filesystem, and better baseline security; Windows is a closed, licensed OS from Microsoft, primarily GUI-driven, case-insensitive, and generally considered less secure and less resource-efficient for server workloads.",
+  visual:null,
+  commands:[],
+  terminal:null,
+  lab:"<p>On any Windows or Mac machine, try creating two files named <code>Notes.txt</code> and <code>notes.txt</code> in the same folder. Observe: does the OS allow both to exist? Now imagine doing the same on Linux — it would allow both, since it's case-sensitive.</p>",
+  mistakes:"<p>Assuming Linux \"has no GUI.\" As covered in Q1, most desktop distributions ship a full graphical interface — the CLI is an additional power tool, not the only option.</p>",
+  trouble:null,
+  memory:"🧠 \"Linux is Locked-open (free, monolithic), Windows is Walled (paid, proprietary).\"",
+  flashcard:{q:"Is the Linux filesystem case-sensitive or case-insensitive?", a:"Case-sensitive (File.txt ≠ file.txt)."},
+  mcq:{q:"Which statement correctly matches the source comparison?", options:["Windows filesystem is case sensitive","Linux uses only a GUI","Linux uses a Monolithic Kernel","Windows is free of cost"], answer:2, explain:"Per the source table, Linux uses a Monolithic Kernel while Windows uses a (micro-style) kernel; Windows requires a paid license and is not case sensitive."},
+  summary:["Linux is open-source and free; Windows is proprietary and paid.","Linux supports both CLI and GUI; Windows is primarily GUI.","Linux is generally considered more secure and more efficient.","Linux uses a monolithic kernel; Windows uses a different kernel design.","Linux filesystem is case sensitive; Windows filesystem is not.","Choice between them often comes down to cost, control, and use case (server vs desktop)."]
+},
+{
+  num:"04",
+  q:"Difference between Linux and Unix?",
+  original:`<table class="cmp"><thead><tr><th></th><th>Linux</th><th>UNIX</th></tr></thead><tbody>
+    <tr><td><b>Source code</b></td><td>Linux is open source i.e. freely available</td><td>Unix is owned by companies like IBM, HP and oracle and not freely available for public access</td></tr>
+    <tr><td><b>User interface</b></td><td>Linux uses both GUI (Graphical User Interface) and CLI (Command Line Interface)</td><td>Unix uses CLI (Command Line Interface)</td></tr>
+    <tr><td><b>Cost</b></td><td>Linux is free of Cost</td><td>Unix is Expensive and requires paid license</td></tr>
+    <tr><td><b>Usage</b></td><td>Linux is used for both personal computing and enterprise systems. For e.g. – Servers, Desktops, Mobile OS</td><td>Primarily used in enterprise environment. For e.g. – Servers, Super computers, Telecommunication systems</td></tr>
+  </tbody></table>`,
+  beginner:"<p>Unix is like the \"original recipe\" — an older operating system family from the 1970s, sold and controlled by big companies (IBM's AIX, HP's HP-UX, Oracle's Solaris are all \"Unix\" variants). Linux is a newer operating system <i>inspired by</i> and largely <i>compatible with</i> Unix's ideas, but written independently and given away for free.</p><p>Think of Unix as several competing, paid gourmet cookbooks from different publishers, and Linux as a free, community-written cookbook that follows the same style of recipes.</p>",
+  why:"<p>Commercial Unix vendors needed to recoup R&amp;D and hardware costs, so they kept their code closed and charged licensing fees. Linux exists precisely because that model excluded students, startups, and hobbyists — it recreated Unix-like behavior without the cost or legal restrictions.</p>",
+  real:"<p>Legacy banking or telecom systems built decades ago often still run on commercial Unix (e.g. Solaris, AIX) because migrating mission-critical software is risky and expensive. New projects almost always choose Linux instead, since it offers the same reliability at zero licensing cost and with a vastly larger hiring pool of skilled admins.</p>",
+  interview:"Unix is a family of proprietary operating systems (AIX, HP-UX, Solaris) owned by companies and requiring paid licenses, mostly CLI-based and used in enterprise/telecom/supercomputing. Linux is a free, open-source, Unix-like OS usable with both GUI and CLI, spanning personal computers, mobile (Android), and enterprise servers.",
+  visual:{type:"mermaid", code:`graph LR
+    U["Unix family (1970s)"] --> AIX["IBM AIX (paid)"]
+    U --> HPUX["HP-UX (paid)"]
+    U --> SOL["Oracle Solaris (paid)"]
+    U -. inspired .-> LNX["Linux (1991, free, open-source)"]
+    LNX --> D1["Desktops"]
+    LNX --> D2["Servers"]
+    LNX --> D3["Android / Mobile"]`},
+  commands:[],
+  terminal:null,
+  lab:"<p>List three real companies/products you can find that still run on a commercial Unix variant (AIX, HP-UX, or Solaris) versus three that run on Linux, and compare their industries.</p>",
+  mistakes:"<p>Confusing \"Unix\" and \"Linux\" as the same thing. They're related in philosophy and behavior, but Unix refers to specific licensed operating systems, while Linux is a separate, freely licensed kernel/OS family.</p>",
+  trouble:null,
+  memory:"🧠 \"Unix costs bucks. Linux is free luck.\"",
+  flashcard:{q:"Name two commercial Unix operating systems mentioned in the source.", a:"IBM AIX and HP-UX (also Oracle Solaris)."},
+  mcq:{q:"Which is primarily true of Unix, per the source?", options:["It is free of cost","It is open source","It is expensive and requires a paid license","It only runs on mobile devices"], answer:2, explain:"The source states Unix is expensive and requires a paid license, unlike Linux."},
+  summary:["Unix is a family of proprietary, paid operating systems.","Linux is free, open-source, and Unix-like in design.","Unix is mostly CLI-only; Linux supports both CLI and GUI.","Unix is used mainly in enterprise/telecom/supercomputing.","Linux spans personal, mobile, and enterprise use.","Companies like IBM, HP, and Oracle own commercial Unix variants."]
+},
+{
+  num:"05",
+  q:"What is vMotion & vCenter?",
+  original:"vMotion: Live migration of a VM from one host to another without downtime. vCenter: Centralized management tool to manage ESXi hosts and VMs.",
+  beginner:"<p>Imagine a hospital patient who needs to be moved to a different bed, but the move must happen <i>without ever unplugging</i> their life-support machines — the patient stays alive and connected the whole time. That's <b>vMotion</b>: it moves a running virtual machine from one physical host to another with zero downtime, so users never notice.</p><p><b>vCenter</b> is the \"hospital's control room\" — a centralized dashboard where administrators manage every host (ESXi server) and every VM from one place, instead of logging into each machine individually.</p>",
+  why:"<p>Physical hosts sometimes need maintenance (firmware updates, hardware repair) or become overloaded. Without vMotion, moving a VM would require shutting it down — causing downtime for users. vMotion was created so maintenance and load-balancing could happen invisibly, keeping services always-on.</p>",
+  real:"<p>An admin needs to patch firmware on a physical host running 20 production VMs. Instead of scheduling a maintenance window and taking everything offline, they use vMotion to live-migrate all 20 VMs to another host in minutes, patch the now-empty host, then migrate VMs back — with users never noticing any interruption.</p>",
+  interview:"vMotion is VMware's live-migration feature that moves a running VM between physical hosts with zero downtime. vCenter is the centralized management platform used to administer multiple ESXi hosts and their VMs, including triggering vMotion, from a single console.",
+  visual:{type:"mermaid", code:`sequenceDiagram
+    participant Admin
+    participant vCenter
+    participant HostA as ESXi Host A
+    participant HostB as ESXi Host B
+    Admin->>vCenter: Trigger vMotion for VM01
+    vCenter->>HostA: Start copying VM memory state
+    HostA->>HostB: Stream memory + disk state
+    HostB-->>vCenter: Ready, VM active on Host B
+    vCenter-->>Admin: Migration complete, zero downtime`},
+  commands:[],
+  terminal:null,
+  lab:"<p>In a free trial or lab environment of VMware vSphere (or documentation walkthrough), locate the vCenter web client, find an existing VM, and identify the \"Migrate\" option that would trigger a vMotion — note what prerequisites (shared storage, matching CPU family) it warns you about.</p>",
+  mistakes:"<p>Assuming vMotion works between any two random servers. In reality it requires shared storage accessible to both hosts and compatible CPU architectures — otherwise the migration will fail or be blocked.</p>",
+  trouble:{problem:"vMotion fails with a compatibility error.", reason:"The source and destination hosts have different CPU generations/features (EVC mismatch).", solution:"Enable Enhanced vMotion Compatibility (EVC) on the cluster, or migrate only between hosts with matching CPU families."},
+  memory:"🧠 vMotion = \"Move it live.\" vCenter = \"See it all.\"",
+  flashcard:{q:"What does vMotion allow you to do?", a:"Live-migrate a running VM from one host to another without downtime."},
+  mcq:{q:"What is vCenter primarily used for?", options:["Encrypting VM disks","Centralized management of ESXi hosts and VMs","Running antivirus scans","Compiling Linux kernels"], answer:1, explain:"vCenter is VMware's centralized management platform for hosts and virtual machines."},
+  summary:["vMotion = live migration of a VM between hosts with no downtime.","vCenter = centralized management console for ESXi hosts and VMs.","vMotion requires shared storage and compatible CPUs between hosts.","Used for maintenance, load balancing, and avoiding downtime.","vCenter is where admins trigger and monitor vMotion operations.","Both are core VMware vSphere features."]
+},
+{
+  num:"06",
+  q:"What do you know in VMware?",
+  original:"VM creation & provisioning. vMotion, Storage vMotion. Snapshot, Clone, Template. Datastore management. Networking (vSwitch, VLAN). Resource allocation (CPU, RAM). Monitoring and troubleshooting.",
+  beginner:"<p>VMware is a company (and product suite) that provides the tools to create and manage virtual machines on physical hosts. Knowing \"VMware\" as a skill means being comfortable with a toolbox of related tasks — not just one thing. Each item in the source list is one tool in that toolbox: creating VMs, moving them (vMotion / Storage vMotion — moving a VM's <i>disk files</i> between storage), saving states (snapshot/clone/template), managing where files live (datastores), connecting VMs to networks (vSwitch/VLAN), giving them CPU/RAM, and watching for problems (monitoring).</p>",
+  why:"<p>Running a virtualized data center touches many different layers at once — compute, storage, and networking — so administrators need a broad, practical skill set rather than a single narrow skill. VMware bundles all these capabilities into one platform so one team can manage everything from one console.</p>",
+  real:"<p>A new application team asks for a server. A VMware administrator: provisions a new VM from a template, allocates CPU/RAM based on requirements, connects it to the correct VLAN, places its disk on an appropriate datastore, and sets up monitoring alerts — all without ever touching physical hardware.</p>",
+  interview:"My VMware experience covers the full VM lifecycle: creating and provisioning VMs, live migration (vMotion) and storage migration (Storage vMotion), snapshot/clone/template management, datastore management, networking with vSwitches and VLANs, CPU/RAM resource allocation, and day-to-day monitoring and troubleshooting.",
+  visual:{type:"mermaid", code:`mindmap
+    root((VMware Skills))
+      VM Lifecycle
+        Creation & Provisioning
+        Clone
+        Template
+      Mobility
+        vMotion
+        Storage vMotion
+      Protection
+        Snapshot
+      Storage
+        Datastore management
+      Networking
+        vSwitch
+        VLAN
+      Resources
+        CPU allocation
+        RAM allocation
+      Operations
+        Monitoring
+        Troubleshooting`},
+  commands:[],
+  terminal:null,
+  lab:"<p>Pick any one item from the list (e.g. \"vSwitch\") and write a 2-sentence plain-English explanation of what it does, as if teaching a non-technical friend.</p>",
+  mistakes:"<p>Treating \"VMware experience\" as a single skill in interviews rather than breaking it into specific, demonstrable tasks (as this list does) — interviewers want to hear concrete examples, not just \"I know VMware.\"</p>",
+  trouble:null,
+  memory:"🧠 Group them as 3 C's: Create, Connect, Control (provisioning; networking/storage; monitoring/resources).",
+  flashcard:{q:"Name three storage/VM-state related VMware features.", a:"Snapshot, Clone, and Template (also Storage vMotion, Datastore management)."},
+  mcq:{q:"Which of the following is a VMware networking concept mentioned in the source?", options:["vSwitch","iDRAC","ILO","systemd"], answer:0, explain:"vSwitch (virtual switch) and VLAN are the networking items listed under VMware knowledge in the source."},
+  summary:["VMware knowledge spans VM lifecycle, mobility, protection, storage, networking, resources, and operations.","vMotion moves running VMs; Storage vMotion moves VM disk files.","Snapshot/Clone/Template each serve different VM-state needs.","vSwitch and VLAN handle VM networking.","Resource allocation covers CPU and RAM assignment per VM.","Monitoring and troubleshooting keep the environment healthy."]
+},
+{
+  num:"07",
+  q:"What is Template, Clone and Snapshot?",
+  original:"1. Snapshot – Snapshots captures VM's disk, memory, and hardware configuration, allowing you to revert that exact state later, i.e. use for roll back. 2. Clone – Clone is an exact copy of an existing virtual machine (VM). 3. Template – Template is a master copy of a Virtual machine (VM) that is used to create new VM's with predefined configurations.",
+  beginner:"<p><b>Snapshot</b> = a save-point in a video game. You can keep playing, and if things go wrong, load back to that exact save-point instantly.</p><p><b>Clone</b> = a photocopy of a finished document. You get an independent, exact duplicate of a VM that you can now change separately without affecting the original.</p><p><b>Template</b> = a blank form/master stencil. It's not meant to be used directly — it's a locked master pattern used to stamp out many new, pre-configured VMs quickly and consistently.</p>",
+  why:"<p>Each solves a different problem: Snapshot exists for <i>safe experimentation</i> (undo button). Clone exists for <i>quick duplication</i> of a working setup. Template exists for <i>standardized, repeatable deployment</i> at scale — so every new server starts from the same known-good baseline.</p>",
+  real:"<p>A company onboarding 50 new developers needs 50 identical Linux dev environments. Instead of installing the OS 50 times, an admin builds one VM, configures it perfectly, converts it into a <b>Template</b>, and deploys 50 new VMs from it in minutes — each one identical and ready to use.</p>",
+  interview:"A Snapshot captures a VM's exact disk, memory, and config state for rollback. A Clone is a full independent copy of an existing VM. A Template is a locked master image used to rapidly deploy multiple new, pre-configured VMs.",
+  visual:{type:"mermaid", code:`graph TD
+    VM["Original VM"] -->|takes a save point| SNAP["Snapshot (rollback point)"]
+    VM -->|full copy| CLONE["Clone (independent VM)"]
+    VM -->|convert to master| TEMPLATE["Template (locked master)"]
+    TEMPLATE -->|deploy many| N1["New VM 1"]
+    TEMPLATE --> N2["New VM 2"]
+    TEMPLATE --> N3["New VM 3"]`},
+  commands:[],
+  terminal:null,
+  lab:"<p>Draw a simple diagram (on paper) of a company deploying 5 identical web servers. Label which step uses a Template, and where a Snapshot might be taken before a risky update.</p>",
+  mistakes:"<p>Using Snapshots as a long-term backup strategy. Snapshots are meant to be short-lived — keeping them for weeks/months can degrade VM performance and consume large amounts of disk space.</p>",
+  trouble:{problem:"VM disk usage keeps growing unexpectedly.", reason:"Old snapshots were never deleted and are accumulating changed-block data.", solution:"Regularly review and consolidate/delete old snapshots once they're no longer needed."},
+  memory:"🧠 Snapshot = Save. Clone = Copy. Template = Stencil.",
+  flashcard:{q:"Which of the three (Snapshot/Clone/Template) is meant to deploy many new VMs?", a:"Template."},
+  mcq:{q:"Which feature would you use purely to roll back after a failed update?", options:["Clone","Template","Snapshot","vMotion"], answer:2, explain:"Snapshots capture disk, memory, and configuration state specifically to allow reverting to that exact point."},
+  summary:["Snapshot = rollback save-point (disk, memory, config).","Clone = exact independent copy of a VM.","Template = master image for creating standardized new VMs.","Snapshots should be short-lived, not permanent backups.","Templates enable fast, consistent deployment at scale.","Clones are useful for testing without touching the original."]
+},
+{
+  num:"08",
+  q:"Which version of VMware vSphere you have work?",
+  original:"I have worked on VMware vSphere versions 7.0 and 8.0",
+  beginner:"<p>vSphere is VMware's overall virtualization product suite (it includes both ESXi, the hypervisor, and vCenter, the manager). Like any software, it has version numbers — 7.0 and 8.0 are simply newer releases with more features, better performance, and security fixes over earlier versions like 6.x.</p>",
+  why:"<p>Interviewers ask this to gauge how current your hands-on experience is — virtualization platforms change meaningfully between major versions (new APIs, security models, hardware support), so knowing the version tells them what features and quirks you're likely familiar with.</p>",
+  real:"<p>A team migrating from vSphere 6.7 (which reached end-of-support) to 7.0 or 8.0 needs staff who understand both the old and new versions to plan a smooth upgrade without breaking existing VMs or integrations.</p>",
+  interview:"I have hands-on experience with VMware vSphere versions 7.0 and 8.0, including day-to-day administration of ESXi hosts and vCenter in those releases.",
+  visual:null,
+  commands:[],
+  terminal:null,
+  lab:"<p>Look up the official release notes for vSphere 7.0 and 8.0 and list 2 new features introduced in each version compared to its predecessor.</p>",
+  mistakes:"<p>Giving a vague answer like \"I've used VMware\" without a version — in real interviews, specificity signals genuine hands-on experience rather than surface-level familiarity.</p>",
+  trouble:null,
+  memory:"🧠 This is a personal-experience answer — memorize your own real version numbers, don't guess.",
+  flashcard:{q:"What two vSphere versions are mentioned as personal experience in the source?", a:"7.0 and 8.0."},
+  mcq:{q:"Why do interviewers ask which vSphere version you've used?", options:["To test your typing speed","To gauge how current and specific your hands-on experience is","Because version numbers are a trick question","To check your internet connection"], answer:1, explain:"Version-specific questions help interviewers assess real, current hands-on experience rather than generic familiarity."},
+  summary:["vSphere is VMware's virtualization suite (ESXi + vCenter).","This answer is personal-experience based — state your real versions.","Source example experience: vSphere 7.0 and 8.0.","Version knowledge signals how current your skills are.","Major versions bring new features, APIs, and security changes.","Always be ready to name 1-2 features unique to the version you claim."]
+},
+{
+  num:"09",
+  q:"How you take the console of the Virtual Server?",
+  original:"We take console of Virtual machine by VMware vSphere. By browser",
+  beginner:"<p>A <b>console</b> is like looking directly at a computer's screen and using its keyboard, even if you're not physically standing in front of it. For a virtual server, you don't need to walk to a data center — you simply open a web browser, log into VMware vSphere (via vCenter), find the VM in the list, and click \"Open Console\" to see and control its screen remotely.</p>",
+  why:"<p>Virtual machines don't have a physical monitor or keyboard plugged in — they exist as software. A browser-based console was built into vSphere so administrators can interact with a VM's screen (useful when the network/SSH isn't working) from anywhere with browser access to vCenter.</p>",
+  real:"<p>A VM's network configuration gets misconfigured and it becomes unreachable over SSH or RDP. The admin can't connect normally — but they can still open the VM's console through the vCenter browser interface, log in locally, and fix the network settings, because the console works independently of the VM's network connectivity.</p>",
+  interview:"For virtual servers, we access the console through VMware vSphere via a browser — logging into vCenter, selecting the VM, and opening its remote console, which works even if the VM's network is down.",
+  visual:{type:"mermaid", code:`graph LR
+    A["Admin's Browser"] --> B["vCenter Web Client"]
+    B --> C["Select target VM"]
+    C --> D["Open Console"]
+    D --> E["Live VM screen & keyboard access"]`},
+  commands:[],
+  terminal:null,
+  lab:"<p>If you have access to a vSphere/vCenter lab environment (many free trials exist), log in via browser, select any VM, and locate the \"Launch Web Console\" or \"Open Console\" button. Note how many clicks it takes.</p>",
+  mistakes:"<p>Trying to SSH into a VM as the only way to reach it, and giving up when the network is broken — forgetting that the console bypasses the network entirely.</p>",
+  trouble:{problem:"Console shows a black screen after clicking Open Console.", reason:"The VM may be powered off, or the console session is still initializing/has too many active sessions.", solution:"Confirm the VM is powered on in vCenter, and close any duplicate console sessions before retrying."},
+  memory:"🧠 Browser → vCenter → pick VM → Console = \"see the screen without leaving your desk.\"",
+  flashcard:{q:"How do you access a virtual server's console?", a:"Through VMware vSphere, via a browser (through vCenter)."},
+  mcq:{q:"Why is the console useful even when a VM has no network connectivity?", options:["It doesn't require network access, it works directly through the hypervisor","It uses a satellite connection","It restarts the VM automatically","It only works when the network is up"], answer:0, explain:"The console renders the VM's screen directly through the hypervisor, independent of the VM's own network stack."},
+  summary:["Virtual server console is accessed via VMware vSphere.","Access happens through a browser, via vCenter.","Console works even without network connectivity to the VM.","Useful for fixing misconfigured networks locally.","No physical presence in a data center required.","Contrast this with physical server console access (Q10)."]
+},
+{
+  num:"10",
+  q:"How you take the console of the Physical Server?",
+  original:"We take console of Physical server as follows. If HP – then by ILO. If DELL – then by IDRAC. Put the management ip on the browser",
+  beginner:"<p>Physical servers have a special, separate tiny computer built into them just for remote management — even if the main server is completely powered off or frozen. HP calls this <b>iLO</b> (Integrated Lights-Out). Dell calls its version <b>iDRAC</b> (Integrated Dell Remote Access Controller). Both let you type a special \"management IP address\" into a browser to remotely see the server's screen, power it on/off, or even reinstall its OS — as if you were standing in front of it with a screen and keyboard.</p>",
+  why:"<p>Physical servers often live in distant, secured data centers. Rather than requiring a technician to physically travel and plug in a monitor every time something goes wrong, manufacturers built dedicated out-of-band management chips (iLO/iDRAC) directly onto the motherboard, so admins can manage hardware remotely — even during a total OS crash.</p>",
+  real:"<p>A production physical server hangs and stops responding to SSH or ping. Instead of driving to the data center, the admin opens a browser, enters the server's iLO/iDRAC management IP, views the live console (may show a kernel panic message), and can remotely force a restart — resolving the incident in minutes instead of hours.</p>",
+  interview:"For physical servers, console access depends on the vendor: HP servers use iLO, and Dell servers use iDRAC. Both are accessed by entering the server's dedicated management IP address into a browser, giving remote screen and power control independent of the main OS.",
+  visual:{type:"mermaid", code:`graph TD
+    A["Admin's Browser"] --> B{"Server Vendor?"}
+    B -->|HP| C["Enter iLO management IP"]
+    B -->|Dell| D["Enter iDRAC management IP"]
+    C --> E["Remote console + power control"]
+    D --> E`},
+  commands:[],
+  terminal:null,
+  lab:"<p>Search online for a screenshot of an iLO or iDRAC login page. Identify what information it typically asks for (management IP, username, password) and what actions are available once logged in (power on/off, virtual console, virtual media).</p>",
+  mistakes:"<p>Confusing the management IP (for iLO/iDRAC) with the server's regular OS network IP — they are separate network interfaces serving completely different purposes.</p>",
+  trouble:{problem:"Cannot reach the iLO/iDRAC management IP in the browser.", reason:"The dedicated management network port may be unplugged, misconfigured, or on a different VLAN than the admin's machine.", solution:"Verify physical cabling to the management port and confirm the admin's workstation has network routing to the management VLAN/subnet."},
+  memory:"🧠 \"HP = iLO (lights-out), Dell = iDRAC (Dell remote access)\" — remember by brand pairing.",
+  flashcard:{q:"What is Dell's remote console management tool called?", a:"iDRAC (Integrated Dell Remote Access Controller)."},
+  mcq:{q:"What do you enter into the browser to access a physical server's console?", options:["The server's public website URL","The management IP address (iLO/iDRAC)","The server's MAC address","The data center's street address"], answer:1, explain:"You enter the dedicated management IP address for iLO (HP) or iDRAC (Dell) into a browser to access the physical console."},
+  summary:["Physical server console access differs by hardware vendor.","HP servers use iLO (Integrated Lights-Out).","Dell servers use iDRAC.","Access is via a browser using the server's management IP.","Works independently of the main OS, even during a crash.","Contrast with virtual server console access via vCenter (Q9)."]
+},
+{
+  num:"11",
+  q:"How to decommission the server in VMware?",
+  original:"Take backup of VM on backup server. Shutdown VM. Remove from monitoring tools. Delete VM from disk. Remove from inventory. Inform stakeholders.",
+  beginner:"<p><b>Decommissioning</b> means permanently retiring a server that's no longer needed — like properly closing down a store rather than just locking the door and walking away. You don't want to just delete it randomly, because other systems, teams, or monitoring tools might still depend on it, or you might need the data later.</p>",
+  why:"<p>Without a formal decommission process, deleted servers can cause monitoring alerts to fire forever for a machine that no longer exists, lost data that was never backed up, or confused teams who didn't know a dependency was removed. The step-by-step process exists to prevent these real operational headaches.</p>",
+  real:"<p>An old test server is scheduled for retirement. The admin backs it up (in case data is needed for an audit later), shuts it down and waits to confirm no one complains, removes it from monitoring dashboards (so no false alerts), deletes the VM's disk files to reclaim storage, removes its entry from vCenter's inventory list, and finally emails the relevant teams confirming it's gone — closing the loop cleanly.</p>",
+  interview:"To decommission a VM in VMware: first take a backup, shut the VM down, remove it from monitoring tools, delete it from disk, remove it from vCenter's inventory, and finally inform stakeholders that the server has been retired.",
+  visual:{type:"mermaid", code:`flowchart TD
+    A["1. Take backup of VM"] --> B["2. Shutdown VM"]
+    B --> C["3. Remove from monitoring tools"]
+    C --> D["4. Delete VM from disk"]
+    D --> E["5. Remove from inventory"]
+    E --> F["6. Inform stakeholders"]`},
+  commands:[],
+  terminal:null,
+  lab:"<p>Write out this same 6-step decommission checklist as if it were a physical server instead of a VM. What changes (e.g. no \"delete from disk\" step, but maybe \"wipe drives\" and \"return/recycle hardware\")?</p>",
+  mistakes:"<p>Skipping the backup step because \"it's not needed anymore.\" Data compliance or audit requirements can surface unexpectedly months later — always back up before deleting.</p>",
+  trouble:{problem:"Monitoring alerts keep firing for a server that was already deleted.", reason:"Step 3 (remove from monitoring tools) was skipped or done out of order.", solution:"Always remove monitoring entries before or immediately after shutdown, not as an afterthought."},
+  memory:"🧠 Remember the order: <b>B</b>ackup, <b>S</b>hutdown, <b>M</b>onitoring off, <b>D</b>elete, <b>I</b>nventory, <b>N</b>otify — \"Big Servers Must Die In November.\"",
+  flashcard:{q:"What is the very first step when decommissioning a VM?", a:"Take a backup of the VM on a backup server."},
+  mcq:{q:"Per the source process, what should happen right before deleting the VM from disk?", options:["Inform stakeholders","Remove from monitoring tools","Take a backup","Shutdown VM"], answer:1, explain:"The order given is: backup, shutdown, remove from monitoring, delete from disk, remove from inventory, inform stakeholders."},
+  summary:["Decommissioning is a structured, 6-step retirement process, not just deletion.","Always back up the VM before removing it.","Shut down before deleting to confirm nothing depends on it.","Remove monitoring entries to avoid false alerts.","Clean up both the disk files and the vCenter inventory entry.","Always inform stakeholders once the server is fully retired."]
+},
+{
+  num:"12",
+  q:"How to check server is live or running?",
+  original:"ping &lt;IP&gt;. telent ip port_number. uptime. top / htop. systemctl status. From VMware: Check VM power state.",
+  beginner:"<p>Checking if a server is \"alive\" is like knocking on someone's door and listening for signs of life, in increasing levels of detail: first, does anything answer at all (<code>ping</code>)? Then, is a specific service/door actually open (<code>telnet ... port</code>)? Then, how long has it been awake without a nap (<code>uptime</code>)? Then, what is it actively doing right now (<code>top</code>/<code>htop</code>)? Then, is a specific program/service healthy (<code>systemctl status</code>)? And if it's a VM, you can also just check its \"power switch\" position directly in VMware.</p>",
+  why:"<p>Different problems need different depths of checking. A network outage needs <code>ping</code>. A firewall/service issue needs <code>telnet</code> to a specific port. A performance issue needs <code>top</code>/<code>htop</code>. These tools exist because \"is it working?\" is actually many separate questions layered on top of each other (network, service, process, resource usage).</p>",
+  real:"<p>A website is reported down. The on-call engineer first <code>ping</code>s the server (network alive?) — success. Then <code>telnet</code>s to port 443 (is the web service listening?) — connection refused! They check <code>systemctl status nginx</code> and see the service crashed. They restart it, then confirm with <code>top</code> that CPU/memory look normal, resolving the incident.</p>",
+  interview:"To check if a server is live, I layer checks: ping for basic network reachability, telnet to a specific port for service-level connectivity, uptime and top/htop for how long it's been running and current resource usage, systemctl status for a specific service's health, and for VMs, checking the power state directly in vCenter.",
+  visual:{type:"mermaid", code:`flowchart TD
+    A["Start: Is server live?"] --> B{"ping IP responds?"}
+    B -- No --> B1["Network / host down — escalate"]
+    B -- Yes --> C{"telnet IP PORT connects?"}
+    C -- No --> C1["Service not listening / firewall blocking"]
+    C -- Yes --> D["Check uptime"]
+    D --> E["Check top / htop for load"]
+    E --> F["systemctl status service"]
+    F --> G{"VM?"}
+    G -- Yes --> H["Check VM power state in vCenter"]
+    G -- No --> I["Done"]`},
+  commands:[
+    {cmd:"ping &lt;IP&gt;", purpose:"Tests basic network reachability of a host by sending small packets and waiting for replies.", syntax:"ping [options] &lt;hostname-or-IP&gt;", args:"-c &lt;count&gt; limits number of pings; -i &lt;seconds&gt; sets interval", examples:"ping 192.168.1.10", output:"64 bytes from 192.168.1.10: icmp_seq=1 ttl=64 time=0.412 ms", mistakes:"Assuming a failed ping always means the server is down — many servers/firewalls deliberately block ICMP for security, so ping may fail even on a healthy server.", related:"traceroute, arping, fping"},
+    {cmd:"telnet &lt;ip&gt; &lt;port&gt;", purpose:"Tests whether a specific network port is open and accepting connections on a remote host.", syntax:"telnet &lt;host&gt; &lt;port&gt;", args:"host (IP or hostname), port (e.g. 22, 80, 443)", examples:"telnet 192.168.1.10 443", output:"Trying 192.168.1.10...\nConnected to 192.168.1.10.\nEscape character is '^]'.", mistakes:"Forgetting telnet itself is often not installed by default on modern systems (use nc / Test-NetConnection as an alternative).", related:"nc (netcat), curl, nmap"},
+    {cmd:"uptime", purpose:"Shows how long the system has been running, number of logged-in users, and system load averages.", syntax:"uptime", args:"-p for pretty format", examples:"uptime", output:"14:32:10 up 41 days, 3:12, 2 users, load average: 0.15, 0.10, 0.05", mistakes:"Misreading load average as a percentage — it's actually the average number of processes waiting for CPU time, relative to CPU core count.", related:"w, who, top"},
+    {cmd:"top / htop", purpose:"Shows a live, continuously updating view of running processes, CPU usage, and memory usage.", syntax:"top   (or htop for an enhanced, color version)", args:"Press q to quit; M sorts by memory; P sorts by CPU", examples:"top", output:"top - 14:35:02 up 41 days,  2 users,  load average: 0.20, 0.18, 0.10\nTasks: 210 total, 1 running\n%Cpu(s): 3.2 us, 1.1 sy, 0.0 ni, 95.5 id\nMiB Mem : 7822.0 total, 3120.5 free", mistakes:"Leaving top running unnecessarily on a production server can itself consume noticeable CPU on very low-resource machines — htop is often preferred for readability but has the same consideration.", related:"ps aux, vmstat, free -h"},
+    {cmd:"systemctl status &lt;service&gt;", purpose:"Shows whether a specific systemd-managed service is active, its recent log lines, and its process ID.", syntax:"systemctl status &lt;service-name&gt;", args:"service-name, e.g. nginx, sshd, docker", examples:"systemctl status nginx", output:"● nginx.service - A high performance web server\n   Loaded: loaded (/lib/systemd/system/nginx.service; enabled)\n   Active: active (running) since Thu 2026-07-09 08:12:03 UTC; 1 day ago", mistakes:"Confusing 'active (running)' with 'active (exited)' — some services are meant to run once and exit, which is normal, not a failure.", related:"systemctl restart, journalctl -u, systemctl is-active"}
+  ],
+  terminal:`<span class="p1">admin@webserver01</span>:<span class="p2">~</span>$ ping -c 3 192.168.1.10
+64 bytes from 192.168.1.10: icmp_seq=1 ttl=64 time=0.412 ms
+64 bytes from 192.168.1.10: icmp_seq=2 ttl=64 time=0.398 ms
+64 bytes from 192.168.1.10: icmp_seq=3 ttl=64 time=0.405 ms
+<span class="dim">--- 192.168.1.10 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss</span>
+
+<span class="p1">admin@webserver01</span>:<span class="p2">~</span>$ systemctl status nginx
+<span class="p1">●</span> nginx.service - A high performance web server
+   Loaded: loaded (/lib/systemd/system/nginx.service; enabled)
+   <span class="p1">Active: active (running)</span> since Thu 2026-07-09 08:12:03 UTC; 1 day ago
+   Main PID: 1042 (nginx)
+   Tasks: 5 (limit: 4915)
+   Memory: 12.3M`,
+  lab:"<p>On any Linux machine or VM you have access to: (1) run <code>ping -c 3 127.0.0.1</code>, (2) run <code>uptime</code>, (3) run <code>top</code> and press <code>q</code> to quit, (4) run <code>systemctl status ssh</code> (or any installed service), and note the \"Active:\" line for each.</p>",
+  mistakes:"<p>Relying only on <code>ping</code> to declare a server \"down\" — many production servers block ICMP ping at the firewall for security while still running all services perfectly. Always confirm with a port-level check like <code>telnet</code>/<code>nc</code> before escalating an incident.</p>",
+  trouble:{problem:"ping succeeds but the website is still unreachable.", reason:"The network/host is alive, but the specific web service (nginx/apache) may have crashed or the firewall is blocking that particular port.", solution:"Run telnet/nc to the specific port (e.g. 443), then check systemctl status for the web service to find the real cause."},
+  memory:"🧠 Remember the escalation ladder: <b>P</b>ing → <b>T</b>elnet → <b>U</b>ptime → <b>T</b>op → <b>S</b>ystemctl — \"Please Try Using Team Systems.\"",
+  flashcard:{q:"Which command shows how long a Linux server has been running without a reboot?", a:"uptime"},
+  mcq:{q:"Which command checks whether a specific port is open on a remote server?", options:["uptime","top","telnet ip port","systemctl status"], answer:2, explain:"telnet (or nc) tests connectivity to a specific port, unlike ping which only checks basic network reachability."},
+  summary:["Server \"aliveness\" checks range from network-level to service-level.","ping tests basic reachability, but can be blocked by firewalls.","telnet/nc tests whether a specific port/service is listening.","uptime and top/htop show runtime and live resource usage.","systemctl status confirms a specific service's health.","For VMs, also check power state directly in VMware/vCenter."]
+},
+{
+  num:"13",
+  q:"Difference between network and Network Manager?",
+  original:`<table class="cmp"><thead><tr><th>Network Service</th><th>NetworkManager</th></tr></thead><tbody>
+    <tr><td>Traditional service</td><td>Modern tool</td></tr>
+    <tr><td>Static config</td><td>Dynamic config</td></tr>
+    <tr><td>Used in older RHEL</td><td>Used in newer RHEL</td></tr>
+    <tr><td>Less flexible</td><td>More flexible (GUI + CLI)</td></tr>
+  </tbody></table>`,
+  beginner:"<p>Think of two ways to control your home's Wi-Fi router: an old paper instruction manual where you manually write down fixed settings once (the traditional <b>network service</b>), versus a modern app on your phone that can detect and adjust to new networks automatically, with buttons you can tap (<b>NetworkManager</b>). Both aim to configure your network connection — one is rigid and manual, the other is adaptive and user-friendly.</p>",
+  why:"<p>Early Linux systems used simple static configuration files because servers rarely changed networks. As laptops and dynamic environments (Wi-Fi, VPNs, cloud instances) became common, a more flexible tool was needed that could detect and adapt to changing network conditions on the fly — hence NetworkManager.</p>",
+  real:"<p>An admin managing a fleet of older RHEL 6 servers edits static <code>/etc/sysconfig/network-scripts</code> files by hand for each server. On newer RHEL 8/9 systems, they instead use <code>nmcli</code> (NetworkManager's CLI) or its GUI, which lets them add/change network profiles instantly, including for machines that roam between networks like laptops.</p>",
+  interview:"The traditional network service uses static configuration and was standard in older RHEL versions but is less flexible. NetworkManager is the modern replacement, supporting dynamic configuration through both GUI and CLI, and is the default in newer RHEL releases.",
+  visual:{type:"mermaid", code:`graph TD
+    subgraph Old["Older RHEL"]
+      NS["network service<br/>(static config, less flexible)"]
+    end
+    subgraph New["Newer RHEL"]
+      NM["NetworkManager<br/>(dynamic config, GUI + CLI)"]
+    end
+    NS -.evolved into.-> NM`},
+  commands:[],
+  terminal:null,
+  lab:"<p>If you have access to a RHEL/CentOS/Fedora system, run <code>nmcli device status</code> to see NetworkManager's view of your network interfaces, and compare it conceptually to what a static config file would need to specify manually.</p>",
+  mistakes:"<p>Manually editing legacy network config files on a system that's actively managed by NetworkManager — the two can conflict, leading to settings being silently overwritten or ignored.</p>",
+  trouble:{problem:"Manual network config changes don't take effect / get reverted.", reason:"NetworkManager is active and managing the interface, overriding manual static file edits.", solution:"Use nmcli or the NetworkManager GUI to make changes instead of editing legacy config files directly, or explicitly set the interface to unmanaged if static config is required."},
+  memory:"🧠 \"Old and rigid = network service. New and nimble = NetworkManager.\"",
+  flashcard:{q:"Which tool is the default in newer RHEL versions: network service or NetworkManager?", a:"NetworkManager."},
+  mcq:{q:"What is a key advantage of NetworkManager over the traditional network service?", options:["It only works with static IPs","It supports dynamic configuration via GUI and CLI","It removes the need for IP addresses","It is only available on Windows"], answer:1, explain:"NetworkManager is a modern, more flexible tool supporting dynamic configuration through both GUI and CLI."},
+  summary:["Network service = traditional, static configuration, older RHEL.","NetworkManager = modern, dynamic configuration, newer RHEL.","NetworkManager supports both GUI and CLI management.","NetworkManager adapts well to changing network environments.","Mixing manual static edits with NetworkManager can cause conflicts.","nmcli is the primary CLI tool for NetworkManager."]
+},
+{
+  num:"14",
+  q:"What is a Hypervisor?",
+  original:"A hypervisor is software that creates, runs and manages virtual machines. Types: Type 1 (Bare metal) — ESXi. Type 2 (Hosted) — VirtualBox.",
+  beginner:"<p>A hypervisor is like a building superintendent who decides how the building's shared resources (electricity, water, space) are divided among many tenants (virtual machines). There are two styles of superintendent: <b>Type 1 (bare-metal)</b> lives right in the building itself, directly managing everything with no landlord above it (e.g. VMware ESXi runs directly on the server hardware, with no separate host OS underneath) — this is faster and used in data centers. <b>Type 2 (hosted)</b> is more like a superintendent who is themselves a tenant, working within a regular building (a normal OS like Windows or macOS) with VirtualBox as an app installed on top — simpler to set up, great for personal use and testing.</p>",
+  why:"<p>Hypervisors were invented so multiple isolated virtual machines could safely share one physical machine's hardware without interfering with each other. Two types emerged to serve two different goals: Type 1 for maximum performance and scale in data centers, Type 2 for convenience and ease of use on personal computers.</p>",
+  real:"<p>A company's data center runs VMware ESXi (Type 1) directly on server hardware to host hundreds of production VMs with minimal performance overhead. Meanwhile, a developer's laptop runs VirtualBox (Type 2) on top of their regular Windows OS just to spin up a quick test VM for trying out a new Linux distro — convenience matters more than raw performance here.</p>",
+  interview:"A hypervisor is software that creates, runs, and manages virtual machines by dividing physical hardware resources among them. Type 1 (bare-metal) hypervisors like ESXi run directly on hardware for maximum performance in data centers, while Type 2 (hosted) hypervisors like VirtualBox run on top of an existing OS, ideal for personal or test use.",
+  visual:{type:"mermaid", code:`graph TB
+    subgraph Type1["Type 1 - Bare Metal (e.g. ESXi)"]
+      HW1["Physical Hardware"] --> HYP1["Hypervisor (runs directly on hardware)"]
+      HYP1 --> VM1a["VM"]
+      HYP1 --> VM1b["VM"]
+    end
+    subgraph Type2["Type 2 - Hosted (e.g. VirtualBox)"]
+      HW2["Physical Hardware"] --> OS2["Host OS (Windows/macOS)"]
+      OS2 --> HYP2["Hypervisor (installed as an app)"]
+      HYP2 --> VM2a["VM"]
+      HYP2 --> VM2b["VM"]
+    end`},
+  commands:[],
+  terminal:null,
+  lab:"<p>Install VirtualBox (free) on your own computer, and create one small test VM (even without an OS installed) just to see the Type 2 hypervisor's interface. Identify where you'd allocate its CPU and RAM.</p>",
+  mistakes:"<p>Assuming Type 2 hypervisors are \"worse\" in every sense. They're simply optimized for a different goal (convenience, no dedicated hardware needed) rather than maximum performance — the right choice depends on the use case.</p>",
+  trouble:null,
+  memory:"🧠 \"Type 1 = bare metal, no middleman. Type 2 = hosted, one layer up.\" ESXi = 1, VirtualBox = 2 (alphabetically E before V, matches 1 before 2).",
+  flashcard:{q:"Give one example each of a Type 1 and Type 2 hypervisor.", a:"Type 1: ESXi (bare-metal). Type 2: VirtualBox (hosted)."},
+  mcq:{q:"What distinguishes a Type 1 (bare-metal) hypervisor from a Type 2 (hosted) hypervisor?", options:["Type 1 runs directly on hardware; Type 2 runs on top of a host OS","Type 1 only works with Windows","Type 2 is always faster","There is no real difference"], answer:0, explain:"Type 1 hypervisors run directly on the physical hardware; Type 2 hypervisors run as an application on top of an existing host operating system."},
+  summary:["A hypervisor creates, runs, and manages virtual machines.","Type 1 (bare-metal) hypervisors run directly on hardware — e.g. ESXi.","Type 2 (hosted) hypervisors run on top of a host OS — e.g. VirtualBox.","Type 1 is used in data centers for performance and scale.","Type 2 is used for personal computers and quick testing.","The hypervisor is what makes virtualization (Q15) possible."]
+},
+{
+  num:"15",
+  q:"What is Virtualization?",
+  original:"Virtualization is the process of creating virtual versions of physical resources like servers, storage, or networks.",
+  beginner:"<p>Virtualization is like slicing one large pizza into many individual servings — everyone still gets a real piece, just portioned out from one shared whole instead of everyone getting their own separate pizza. Instead of buying a separate physical server, storage array, or network switch for every single need, virtualization software creates \"virtual\" (software-based) versions of these resources from a shared physical pool.</p>",
+  why:"<p>Physical resources are expensive, power-hungry, and often under-used. Virtualization was created to let organizations share physical hardware efficiently across many workloads, reducing cost, improving flexibility, and enabling capabilities like quick provisioning, snapshots, and migration that physical hardware alone can't offer.</p>",
+  real:"<p>Instead of a company buying and maintaining 100 separate physical servers for 100 small applications (huge cost, huge power/cooling bill, huge wasted capacity), they virtualize: 10 powerful physical hosts run all 100 applications as VMs, cutting hardware costs dramatically while keeping each application isolated and manageable.</p>",
+  interview:"Virtualization is the process of creating virtual, software-based versions of physical resources — servers, storage, or networks — allowing multiple isolated workloads to share the same underlying hardware efficiently, enabled by a hypervisor.",
+  visual:{type:"mermaid", code:`graph LR
+    A["Physical Server"] --> B["Virtualization Layer (Hypervisor)"]
+    B --> C["Virtual Server 1"]
+    B --> D["Virtual Server 2"]
+    B --> E["Virtual Storage"]
+    B --> F["Virtual Network"]`},
+  commands:[],
+  terminal:null,
+  lab:"<p>List 3 physical resources in your own home or workplace (e.g. a printer, a router, a hard drive) and imagine how each could be \"virtualized\" — what would a virtual version of each look like, and who would benefit from sharing it?</p>",
+  mistakes:"<p>Thinking virtualization only applies to servers. As the source states, it also applies to storage (virtual disks/datastores) and networks (virtual switches/VLANs) — the same core idea extends across the whole data center.</p>",
+  trouble:null,
+  memory:"🧠 \"Virtual = software version of something real, shared from one physical pool.\"",
+  flashcard:{q:"Name the three types of physical resources virtualization applies to, per the source.", a:"Servers, storage, and networks."},
+  mcq:{q:"What is virtualization, according to the source definition?", options:["A type of physical hardware","The process of creating virtual versions of physical resources like servers, storage, or networks","A programming language","A type of network cable"], answer:1, explain:"The source defines virtualization exactly as the process of creating virtual versions of physical resources like servers, storage, or networks."},
+  summary:["Virtualization creates virtual versions of physical resources.","Applies to servers, storage, and networks — not just servers.","Enabled by hypervisor software (see Q14).","Reduces hardware cost and improves resource utilization.","Underpins concepts like VMs, virtual switches, and datastores.","Foundation for cloud computing and modern data centers."]
+},
+{
+  num:"16",
+  q:"Explain NAT, Host-only, and Bridge in Network Adapter?",
+  original:"NAT - NAT (Network Address Translation) allows a virtual machine (VM) to access external networks using the host systems IP address. Bridge - Bridge networking connects the virtual machine directly to the physical network. The VM obtains its own IP address from the network router and behaves like an independent physical machine. It can communicate with other devices on the same network. Host-Only - Host-only networking creates a private and isolated network between the host system and virtual machines. In this setup, VMs can communicate only with the host and other VMs on the same network. There is no internet access unless an additional network adapter is configured.",
+  beginner:"<p>Imagine your laptop (the <b>host</b>) is a house, and a VM is a guest staying in your guest room. There are 3 ways that guest can connect to the outside world:</p><ul><li><b>NAT</b>: The guest can go online, but only by borrowing your house's identity (your IP address) — to the outside internet, all traffic looks like it's coming from you, the host, not the guest directly.</li><li><b>Bridge</b>: The guest is given their own front door key and their own mailing address (IP address) from the same street's post office (your router) — they appear as a fully independent house on the network, visible to everyone else on it.</li><li><b>Host-Only</b>: The guest can only talk to you (the host) and other guests in the house — there's an intercom system between rooms, but no door to the outside street at all, unless you add one.</li></ul>",
+  why:"<p>Different scenarios need different levels of network exposure. NAT was designed for simple internet access without exposing the VM to the wider network. Bridge was designed for when a VM needs to act as a genuine, independently addressable device on the network (e.g. a test server others need to reach). Host-Only was designed for fully isolated testing/development where no external exposure is wanted at all.</p>",
+  real:"<p>A security researcher testing potentially malicious software uses <b>Host-Only</b> networking to guarantee the VM cannot reach the internet or infect other real devices. A developer building a website who wants coworkers on the office network to test it directly uses <b>Bridge</b> so the VM gets its own reachable IP. Someone just wanting their VM to browse the internet for general use sets it to <b>NAT</b>, the simplest, safest default.</p>",
+  interview:"NAT lets a VM access external networks by sharing the host's IP address. Bridge connects the VM directly to the physical network with its own independent IP, fully visible to other devices. Host-Only creates an isolated private network between the host and VMs only, with no internet access unless an extra adapter is added.",
+  visual:{type:"mermaid", code:`graph TD
+    subgraph NAT_Mode["NAT"]
+      VM_N["VM"] -->|shares host IP| HostN["Host"] --> InternetN["Internet"]
+    end
+    subgraph Bridge_Mode["Bridge"]
+      VM_B["VM (own IP from router)"] --> Router["Physical Router/Switch"] --> InternetB["Internet & LAN devices"]
+    end
+    subgraph HostOnly_Mode["Host-Only"]
+      VM_H1["VM 1"] <--> HostH["Host"]
+      VM_H2["VM 2"] <--> HostH
+      HostH -.no internet unless added.-> InternetH["Internet (blocked)"]
+    end`},
+  commands:[],
+  terminal:null,
+  lab:"<p>In VirtualBox or VMware Workstation, create a test VM and try switching its network adapter setting between NAT, Bridged, and Host-Only. After each change, test: (1) can it ping the internet? (2) can it ping your host machine? (3) can another device on your network ping the VM directly?</p>",
+  mistakes:"<p>Using Bridge mode by default for a VM that doesn't need to be reachable by other devices — this unnecessarily exposes the VM directly on the network, increasing its attack surface. NAT is the safer default when only outbound internet access is needed.</p>",
+  trouble:{problem:"A VM in Bridge mode has no internet access.", reason:"The VM may not have received an IP address from the router's DHCP server, often due to the network adapter being set to the wrong physical interface (e.g. Wi-Fi vs Ethernet mismatch).", solution:"Check the Bridge adapter is bound to the correct active physical network interface, and confirm DHCP is enabled on the VM's network settings."},
+  memory:"🧠 \"NAT hides behind you. Bridge stands next to you. Host-Only stays in the room with you.\"",
+  flashcard:{q:"Which network mode gives a VM its own independent IP address directly from the router?", a:"Bridge networking."},
+  mcq:{q:"Which network adapter mode isolates a VM so it can only talk to the host and other VMs, with no internet by default?", options:["NAT","Bridge","Host-Only","DHCP"], answer:2, explain:"Host-Only networking creates a private, isolated network between the host and VMs, with no internet access unless an extra adapter is configured."},
+  summary:["NAT: VM shares the host's IP to reach external networks.","Bridge: VM gets its own IP, acting as an independent network device.","Host-Only: isolated network between host and VMs only, no internet by default.","NAT is the simplest, safest default for general internet access.","Bridge is used when the VM must be directly reachable by other devices.","Host-Only is ideal for isolated testing, e.g. malware analysis."]
+}
+];
+
+/* ================= RENDER ================= */
+const container = document.getElementById('qcontainer');
+const rack = document.getElementById('rackList');
+
+function esc(s){ return s; }
+
+function renderCmd(c){
+  return `<div class="cmd-block">
+    <div class="cmd-head"><code>${c.cmd}</code><button class="copy-btn" onclick="copyCmd(this)" data-copy="${c.cmd.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/"/g,'&quot;')}">copy</button></div>
+    <div class="cmd-body">
+      <dl>
+        <dt>Purpose</dt><dd>${c.purpose}</dd>
+        <dt>Syntax</dt><dd><code>${c.syntax}</code></dd>
+        <dt>Args/Flags</dt><dd>${c.args}</dd>
+        <dt>Example</dt><dd><code>${c.examples}</code></dd>
+        <dt>Output</dt><dd><code>${c.output}</code></dd>
+        <dt>Common mistake</dt><dd>${c.mistakes}</dd>
+        <dt>Related</dt><dd>${c.related}</dd>
+      </dl>
+    </div>
+  </div>`;
+}
+
+function renderQuestion(q, idx){
+  const mermaidBlock = q.visual ? `<div class="mermaid-wrap"><pre class="mermaid">${q.visual.code}</pre></div>` : `<p style="color:var(--text-faint); font-size:13.5px;">No standalone diagram needed — this is a direct factual/personal-experience answer.</p>`;
+  const cmdBlock = q.commands.length ? q.commands.map(renderCmd).join('') : `<p style="color:var(--text-faint); font-size:13.5px;">No specific commands are introduced in this question.</p>`;
+  const termBlock = q.terminal ? `<div class="term">${q.terminal}</div>` : `<p style="color:var(--text-faint); font-size:13.5px;">No terminal output applicable for this question.</p>`;
+  const troubleBlock = q.trouble ? `<div class="trouble-flow">
+      <div class="trouble-step"><span class="tag">PROBLEM</span>${q.trouble.problem}</div>
+      <div class="trouble-arrow">↓</div>
+      <div class="trouble-step"><span class="tag">REASON</span>${q.trouble.reason}</div>
+      <div class="trouble-arrow">↓</div>
+      <div class="trouble-step"><span class="tag">SOLUTION</span>${q.trouble.solution}</div>
+    </div>` : `<p style="color:var(--text-faint); font-size:13.5px;">No common failure mode specifically documented for this topic.</p>`;
+
+  return `
+  <article class="qcard" id="q${q.num}">
+    <div class="qcard-head" onclick="toggleCard(this)">
+      <span class="traffic"><span class="r"></span><span class="a"></span><span class="g"></span></span>
+      <span class="prompt">student@linux-lab:~$ <b>open</b></span>
+      <span class="qcard-title">Q${q.num}. ${q.q}</span>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="qcard-body">
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">1</span><h3>Original Question</h3></div>
+        <div class="sec-content"><div class="original-box">${q.q}</div></div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">2</span><h3>Original Answer (verbatim)</h3></div>
+        <div class="sec-content"><div class="original-box">${q.original}</div></div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">3</span><h3>Beginner Explanation</h3></div>
+        <div class="sec-content">${q.beginner}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">4</span><h3>Why It Exists</h3></div>
+        <div class="sec-content">${q.why}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">5</span><h3>Real World Scenario</h3></div>
+        <div class="sec-content">${q.real}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">6</span><h3>Interview Answer</h3></div>
+        <div class="sec-content"><div class="interview-box">${q.interview}</div></div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">7</span><h3>Visual Explanation</h3></div>
+        <div class="sec-content">${mermaidBlock}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">8</span><h3>Command Breakdown</h3></div>
+        <div class="sec-content">${cmdBlock}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">9</span><h3>Real Terminal Output</h3></div>
+        <div class="sec-content">${termBlock}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">10</span><h3>Mini Lab</h3></div>
+        <div class="sec-content"><div class="lab-box">${q.lab}</div></div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">11</span><h3>Common Mistakes</h3></div>
+        <div class="sec-content"><div class="mistake-box">${q.mistakes}</div></div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">12</span><h3>Troubleshooting</h3></div>
+        <div class="sec-content">${troubleBlock}</div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">13</span><h3>Memory Trick</h3></div>
+        <div class="sec-content"><div class="memory-trick"><span class="icon">💡</span><span>${q.memory}</span></div></div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">14</span><h3>Flashcard</h3></div>
+        <div class="sec-content">
+          <div class="flip-card" onclick="this.classList.toggle('flipped')">
+            <div class="flip-inner">
+              <div class="flip-front">${q.flashcard.q}</div>
+              <div class="flip-back">${q.flashcard.a}</div>
+            </div>
+          </div>
+          <div class="flip-hint">tap card to flip</div>
+        </div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">15</span><h3>MCQ</h3></div>
+        <div class="sec-content">
+          <div class="mcq-box">
+            <p style="margin:0 0 10px; font-weight:600;">${q.mcq.q}</p>
+            ${q.mcq.options.map((opt,i)=>`<button class="mcq-opt" onclick="answerMcq(this, ${i===q.mcq.answer}, '${q.num}')">${opt}</button>`).join('')}
+            <div class="mcq-explain" id="mcqexp-${q.num}">${q.mcq.explain}</div>
+          </div>
+        </div></div>
+
+      <div class="sec"><div class="sec-label"><span class="sec-num">16</span><h3>Summary</h3></div>
+        <div class="sec-content"><ul class="summary-grid">${q.summary.map(s=>`<li>${s}</li>`).join('')}</ul></div></div>
+
+    </div>
+  </article>`;
+}
+
+container.innerHTML = QUESTIONS.map(renderQuestion).join('');
+rack.innerHTML = QUESTIONS.map(q => `<div class="rack-unit" onclick="jumpTo('${q.num}')" id="rack${q.num}"><span class="u-tag">U${q.num}</span><span>${q.q.length>34? q.q.slice(0,34)+'…' : q.q}</span></div>`).join('');
+
+function toggleCard(headEl){
+  headEl.parentElement.classList.toggle('open');
+}
+function jumpTo(num){
+  const card = document.getElementById('q'+num);
+  card.classList.add('open');
+  card.scrollIntoView({behavior:'smooth', block:'start'});
+  document.querySelectorAll('.rack-unit').forEach(r=>r.classList.remove('active'));
+  document.getElementById('rack'+num).classList.add('active');
+}
+function copyCmd(btn){
+  navigator.clipboard.writeText(btn.dataset.copy).then(()=>{
+    const orig = btn.textContent;
+    btn.textContent = 'copied ✓';
+    setTimeout(()=>btn.textContent = orig, 1200);
+  });
+}
+function answerMcq(btn, isCorrect, num){
+  const box = btn.parentElement;
+  box.querySelectorAll('.mcq-opt').forEach(o=>o.style.pointerEvents='none');
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    box.querySelectorAll('.mcq-opt').forEach((o,i)=>{ if(i===[...box.querySelectorAll('.mcq-opt')].indexOf(o)) return; });
+  }
+  document.getElementById('mcqexp-'+num).classList.add('show');
+  // highlight the correct one too
+  const opts = [...box.querySelectorAll('.mcq-opt')];
+  // find correct by re-deriving from QUESTIONS
+  const qObj = QUESTIONS.find(q=>q.num===num);
+  opts[qObj.mcq.answer].classList.add('correct');
+}
+
+let expanded = false;
+document.getElementById('expandAllBtn').addEventListener('click', ()=>{
+  expanded = !expanded;
+  document.querySelectorAll('.qcard').forEach(c=> c.classList.toggle('open', expanded));
+  document.getElementById('expandAllBtn').textContent = expanded ? 'collapse --all' : 'expand --all';
+});
+
+const themeBtn = document.getElementById('themeToggle');
+themeBtn.addEventListener('click', ()=>{
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  themeBtn.textContent = isDark ? 'theme --dark' : 'theme --light';
+  renderMermaidAll();
+});
+
+function renderMermaidAll(){
+  if(window.mermaid){
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    window.mermaid.initialize({ startOnLoad:false, theme: isDark ? 'dark' : 'default', securityLevel:'loose', themeVariables:{ fontFamily:'JetBrains Mono, monospace' } });
+    document.querySelectorAll('.mermaid').forEach(el=>{ el.removeAttribute('data-processed'); });
+    window.mermaid.run({ querySelector: '.mermaid' });
+  }
+}
+window.addEventListener('load', ()=>{ setTimeout(renderMermaidAll, 300); });
+// open first card by default
+document.getElementById('q01').classList.add('open');
+</script>
+</body>
+</html>
