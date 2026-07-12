@@ -10,18 +10,41 @@ const container = document.getElementById('qcontainer');
 const rack = document.getElementById('rackList');
 
 function renderCmd(c){
+  const rows = [];
+  const row = (label, val, isCode) => {
+    if(!val) return;
+    rows.push(`<dt>${label}</dt><dd>${isCode ? `<code>${val}</code>` : val}</dd>`);
+  };
+  row('Purpose', c.purpose);
+  row('Syntax', c.syntax, true);
+  row('Parameters', c.parameters);
+  row('Options', c.options);
+  row('Args/Flags', c.args); // legacy field name, still supported
+  row('Example', c.examples, true);
+  row('Output', c.output, true);
+  row('Output meaning', c.outputExplain);
+  row('Common mistake', c.mistakes);
+  row('Troubleshooting', c.troubleshooting);
+  row('Company usage', c.companyUsage);
+  row('Related', c.related);
+
+  const flagTable = c.flagTable ? `
+    <table class="flag-table">
+      <thead><tr><th>Command</th><th>Meaning</th></tr></thead>
+      <tbody>${c.flagTable.map(f=>`<tr><td>${f.flag}</td><td>${f.meaning}</td></tr>`).join('')}</tbody>
+    </table>` : '';
+
+  const flagBreakdown = c.flagBreakdown ? `
+    <ul class="flag-breakdown">
+      ${c.flagBreakdown.map(f=>`<li><span class="flag-letter">${f.letter}</span><span><b>${f.name || f.letter}</b> — ${f.desc}</span></li>`).join('')}
+    </ul>` : '';
+
   return `<div class="cmd-block">
     <div class="cmd-head"><code>${c.cmd}</code><button class="copy-btn" onclick="copyCmd(this)" data-copy="${c.cmd.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/"/g,'&quot;')}">copy</button></div>
     <div class="cmd-body">
-      <dl>
-        <dt>Purpose</dt><dd>${c.purpose}</dd>
-        <dt>Syntax</dt><dd><code>${c.syntax}</code></dd>
-        <dt>Args/Flags</dt><dd>${c.args}</dd>
-        <dt>Example</dt><dd><code>${c.examples}</code></dd>
-        <dt>Output</dt><dd><code>${c.output}</code></dd>
-        <dt>Common mistake</dt><dd>${c.mistakes}</dd>
-        <dt>Related</dt><dd>${c.related}</dd>
-      </dl>
+      <dl>${rows.join('')}</dl>
+      ${flagTable}
+      ${flagBreakdown}
     </div>
   </div>`;
 }
@@ -303,6 +326,139 @@ function applyGlossaryTooltips(){
   }
 }
 
+/* ---------------- Search / filter ---------------- */
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function initSearch(){
+  const input = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('searchClear');
+  const emptyMsg = document.getElementById('searchEmpty');
+  const countEl = document.getElementById('searchCount');
+  if(!input) return;
+
+  // Only the data-driven question cards are searchable (not the static appendix card).
+  const cards = QUESTIONS.map(q => {
+    const rackEl = document.getElementById('rack' + q.num);
+    const rackLabelEl = rackEl ? rackEl.querySelector('.u-tag + span') : null;
+    return {
+      num: q.num,
+      el: document.getElementById('q' + q.num),
+      rackEl,
+      rackLabelEl,
+      rackLabelText: rackLabelEl ? rackLabelEl.textContent : ''
+    };
+  }).filter(c => c.el);
+
+  let matches = [];      // cards currently matching the query, in question order
+  let activeIndex = -1;  // which match is currently "selected" via keyboard nav
+
+  function clearRackHighlight(){
+    cards.forEach(c => {
+      if(c.rackLabelEl) c.rackLabelEl.textContent = c.rackLabelText;
+    });
+  }
+
+  function highlightRackLabel(c, query){
+    if(!c.rackLabelEl) return;
+    const text = c.rackLabelText;
+    const idx = text.toLowerCase().indexOf(query);
+    if(idx === -1){ c.rackLabelEl.textContent = text; return; }
+    const before = escapeHtml(text.slice(0, idx));
+    const hit = escapeHtml(text.slice(idx, idx + query.length));
+    const after = escapeHtml(text.slice(idx + query.length));
+    c.rackLabelEl.innerHTML = `${before}<mark>${hit}</mark>${after}`;
+  }
+
+  function updateCount(){
+    if(!countEl) return;
+    countEl.textContent = matches.length ? `${activeIndex + 1}/${matches.length}` : (input.value ? '0/0' : '');
+  }
+
+  function clearActiveMarkers(){
+    cards.forEach(c => c.rackEl && c.rackEl.classList.remove('active'));
+  }
+
+  function setActive(idx){
+    if(!matches.length) return;
+    activeIndex = (idx + matches.length) % matches.length;
+    clearActiveMarkers();
+    const c = matches[activeIndex];
+    c.el.classList.add('open');
+    renderMermaidIn(c.el);
+    c.el.scrollIntoView({ behavior:'smooth', block:'start' });
+    if(c.rackEl) c.rackEl.classList.add('active');
+    updateCount();
+  }
+
+  function runFilter(){
+    const query = input.value.trim().toLowerCase();
+    clearBtn.hidden = query.length === 0;
+    clearRackHighlight();
+    clearActiveMarkers();
+    matches = [];
+    activeIndex = -1;
+
+    cards.forEach(c => {
+      const isMatch = query === '' || c.el.textContent.toLowerCase().includes(query);
+      c.el.classList.toggle('hidden', !isMatch);
+      if(c.rackEl) c.rackEl.classList.toggle('hidden', !isMatch);
+      if(isMatch && query){
+        matches.push(c);
+        highlightRackLabel(c, query);
+      }
+    });
+
+    if(emptyMsg) emptyMsg.style.display = (query !== '' && matches.length === 0) ? 'block' : 'none';
+    updateCount();
+
+    // Auto-select the first match so arrow keys work immediately.
+    if(query && matches.length) setActive(0);
+  }
+
+  input.addEventListener('input', runFilter);
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      setActive(activeIndex + 1);
+    } else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      setActive(activeIndex - 1);
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      if(matches.length){
+        setActive(activeIndex);
+        input.blur();
+        closeSidebarOnMobile();
+      }
+    } else if(e.key === 'Escape'){
+      if(input.value){
+        input.value = '';
+        runFilter();
+      }
+      input.blur();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    runFilter();
+    input.focus();
+  });
+
+  // "/" focuses the search box from anywhere on the page, like GitHub/Slack —
+  // but not while the person is already typing somewhere else.
+  document.addEventListener('keydown', (e) => {
+    const typingElsewhere = ['INPUT','TEXTAREA'].includes(document.activeElement.tagName) && document.activeElement !== input;
+    if(e.key === '/' && document.activeElement !== input && !typingElsewhere){
+      e.preventDefault();
+      input.focus();
+    }
+  });
+}
+
 /* ---------------- Boot ---------------- */
 function boot(){
   container.innerHTML = QUESTIONS.map(renderQuestion).join('');
@@ -312,6 +468,7 @@ function boot(){
 
   initTopbarControls();
   initMobileDrawer();
+  initSearch();
   applyGlossaryTooltips();
   applyMermaidTheme();
 

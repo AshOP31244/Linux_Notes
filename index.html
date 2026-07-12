@@ -4,7 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#f5f5f0">
-<title>Linux Lab :: Chapter 01 — Foundations &amp; Virtualization</title>
+<title>Linux Lab — Foundations &amp; Virtualization Notes</title>
+
+<!-- PWA: installable + themed on Android/iOS -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Linux Lab">
+<meta name="mobile-web-app-capable" content="yes">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -25,15 +33,24 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">
-    <button class="btn menu-toggle" id="menuToggle" aria-label="Open menu">☰</button>
-    <span class="dot"></span>
-    <span class="brand-text">linux-lab <span class="path">~/chapter-01/pages-1-10</span></span>
+  <div class="topbar-row">
+    <div class="brand">
+      <button class="btn menu-toggle" id="menuToggle" aria-label="Open menu">☰</button>
+      <span class="dot"></span>
+      <span class="brand-text">linux-lab <span class="path">~/pages-1-30</span></span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn" id="expandAllBtn"><span class="label">expand --all</span><span class="short">⤢</span></button>
+      <button class="btn" id="themeToggle"><span class="label">theme --dark</span><span class="short">◐</span></button>
+      <button class="btn" onclick="window.print()"><span class="label">print --pdf</span><span class="short">🖶</span></button>
+    </div>
   </div>
-  <div class="topbar-actions">
-    <button class="btn" id="expandAllBtn"><span class="label">expand --all</span><span class="short">⤢</span></button>
-    <button class="btn" id="themeToggle"><span class="label">theme --dark</span><span class="short">◐</span></button>
-    <button class="btn" onclick="window.print()"><span class="label">print --pdf</span><span class="short">🖶</span></button>
+  <div class="search-row">
+    <span class="search-icon">🔎</span>
+    <input type="search" id="searchInput" class="search-input" placeholder="Search questions, commands, keywords…" autocomplete="off" spellcheck="false">
+    <span class="search-count" id="searchCount"></span>
+    <span class="search-hint">↑↓ navigate · Enter open · / to focus</span>
+    <button class="search-clear" id="searchClear" aria-label="Clear search" hidden>✕</button>
   </div>
 </header>
 
@@ -41,25 +58,26 @@
 
 <div class="layout">
   <nav class="sidebar" id="sidebar">
-    <div class="rack-label">// Rack — 16 questions</div>
+    <div class="rack-label">// Rack — 30 questions</div>
     <div id="rackList"></div>
   </nav>
 
   <main>
     <section class="hero">
-      <div class="eyebrow">Chapter 01 · Beginner → Interview-ready</div>
+      <div class="eyebrow">Beginner → Interview-ready</div>
       <h1>Linux Foundations &amp; Virtualization</h1>
-      <p>Everything on pages 1–10 of the source PDF, preserved word-for-word, then expanded into a full teaching unit: plain-English explanations, real diagrams, terminal walkthroughs, labs, and interview drills. Assume you've never opened a terminal — we start there.</p>
+      <p>Every question from the source PDF, preserved word-for-word, then expanded into a full teaching unit: plain-English explanations, real diagrams, terminal walkthroughs, labs, and interview drills. Assume you've never opened a terminal — we start there.</p>
       <div class="hero-meta">
-        <div><strong>16</strong>questions covered</div>
-        <div><strong>16</strong>diagrams</div>
-        <div><strong>16</strong>flashcards</div>
-        <div><strong>16</strong>MCQs</div>
-        <div><strong>16</strong>mini-labs</div>
+        <div><strong>30</strong>questions covered</div>
+        <div><strong>24</strong>diagrams</div>
+        <div><strong>30</strong>flashcards</div>
+        <div><strong>30</strong>MCQs</div>
+        <div><strong>30</strong>mini-labs</div>
       </div>
     </section>
 
     <div id="qcontainer"></div>
+    <p id="searchEmpty" style="display:none; text-align:center; color:var(--text-faint); font-family:'JetBrains Mono'; font-size:13px; padding:40px 0;">No questions match your search.</p>
   </main>
 </div>
 
@@ -111,14 +129,14 @@
     <div class="eyebrow" style="margin-bottom:6px;">Verification checklist</div>
     <p style="color:var(--text-dim); margin:0 0 6px; font-size:14px;">Confirming this chapter matches the "do not skip anything" mandate for pages 1–10 of the source PDF.</p>
     <div class="verify-grid">
-      <div class="verify-item"><div class="n">16 / 16</div><div class="l">Questions processed</div></div>
-      <div class="verify-item"><div class="n">5</div><div class="l">Commands fully broken down (Q12)</div></div>
-      <div class="verify-item"><div class="n">16</div><div class="l">Mermaid diagrams added</div></div>
-      <div class="verify-item"><div class="n">16</div><div class="l">Real-world scenarios added</div></div>
-      <div class="verify-item"><div class="n">16</div><div class="l">Interview answers added</div></div>
-      <div class="verify-item"><div class="n">16</div><div class="l">Flashcards added</div></div>
-      <div class="verify-item"><div class="n">16</div><div class="l">MCQs added</div></div>
-      <div class="verify-item"><div class="n">16</div><div class="l">Mini-labs added</div></div>
+      <div class="verify-item"><div class="n">30 / 30</div><div class="l">Questions processed</div></div>
+      <div class="verify-item"><div class="n">6</div><div class="l">Questions with full command breakdowns</div></div>
+      <div class="verify-item"><div class="n">24</div><div class="l">Mermaid diagrams added</div></div>
+      <div class="verify-item"><div class="n">30</div><div class="l">Real-world scenarios added</div></div>
+      <div class="verify-item"><div class="n">30</div><div class="l">Interview answers added</div></div>
+      <div class="verify-item"><div class="n">30</div><div class="l">Flashcards added</div></div>
+      <div class="verify-item"><div class="n">30</div><div class="l">MCQs added</div></div>
+      <div class="verify-item"><div class="n">30</div><div class="l">Mini-labs added</div></div>
       <div class="verify-item"><div class="n">✓</div><div class="l">All 4 comparison tables from source preserved</div></div>
       <div class="verify-item"><div class="n">✓</div><div class="l">Every original sentence retained in "Original Answer" blocks</div></div>
     </div>
@@ -139,6 +157,15 @@
     renderAppendix();
   }else{
     window.addEventListener('mermaid-ready', renderAppendix, { once:true });
+  }
+</script>
+
+<!-- PWA: register the service worker so the site installs and works offline -->
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+    });
   }
 </script>
 </body>
